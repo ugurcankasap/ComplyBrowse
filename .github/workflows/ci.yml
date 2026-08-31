@@ -1,0 +1,89 @@
+name: Browser Security CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    env:
+      BROWSER_SECURITY_QUIET: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall browser_security_agent.py tests qa_tests
+
+      - name: Contract tests
+        run: python -m unittest discover -s qa_tests -p "test_*.py" -v
+
+      - name: Coverage gate
+        run: |
+          coverage run --source=browser_security_agent,tests -m unittest discover -s qa_tests -p "test_*.py"
+          coverage report --fail-under=60
+
+  verification-regression:
+    # Optional: runs only on push to main branch (requires browsers installed)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Edge results
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\test_runner.ps1 -OutputJSON -OutputFile .\edge_test_results.json
+
+      - name: Generate Chrome results
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\chrome_test_runner.ps1 -OutputJSON -OutputFile .\chrome_test_results.json
+
+      - name: Generate Firefox results
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\firefox_test_runner.ps1 -OutputJSON -OutputFile .\firefox_test_results.json
+
+      - name: Apply value verification (Edge)
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\apply_verification.ps1 -InputFile .\edge_test_results.json -Browser edge -OutputFile .\edge_verified.json
+
+      - name: Apply value verification (Chrome)
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\apply_verification.ps1 -InputFile .\chrome_test_results.json -Browser chrome -OutputFile .\chrome_verified.json
+
+      - name: Apply value verification (Firefox)
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\apply_verification.ps1 -InputFile .\firefox_test_results.json -Browser firefox -OutputFile .\firefox_verified.json
+
+      - name: Result integrity audit (Edge)
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\audit_result_integrity.ps1 -InputFile .\edge_verified.json
+
+      - name: Result integrity audit (Chrome)
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\audit_result_integrity.ps1 -InputFile .\chrome_verified.json
+
+      - name: Result integrity audit (Firefox)
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\audit_result_integrity.ps1 -InputFile .\firefox_verified.json
+
+      - name: Verification engine self-validation
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\validate_verification_engine.ps1
+
+      - name: Verification regression gates
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\qa_tests\verification_regression_gate.ps1
