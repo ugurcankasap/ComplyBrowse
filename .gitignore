@@ -1,0 +1,52 @@
+# Local runtime artifacts (do not publish)
+artifacts/
+reports/raw/*
+!reports/raw/.gitkeep
+reports/private/
+reports/csv/
+
+# Local generated results — keep .gitignored so they don't accumulate in git
+*_test_results.json
+*_test_results_*.json
+*_verified.json
+*_verified_*.json
+*_raw_report.json
+_tmp*.json
+
+# Python cache and coverage
+__pycache__/
+*.pyc
+.coverage
+.pytest_cache/
+
+# Local environment/logs
+.venv/
+.env
+*.log
+
+# Local generated HTML dashboards
+verification_dashboard.html
+
+# Internal findings/evidence narratives (do not publish)
+3LAYER_VERIFICATION_REPORT.md
+MULTI_LAYER_VERIFICATION_REPORT.md
+ENRICHMENT_REPORT.md
+reports/turkish_test_lines.txt
+
+# Internal working docs (may contain sensitive context)
+ROADMAP_4_HAFTA.md
+DEPLOYMENT_STANDARDIZATION_REPORT.md
+RELEASE_PREP_LOCAL.md
+FutureAIFeatures.md
+
+# Third-party metadata and generated public snapshots are not source code
+tenable_pages.json
+compliance_files.json
+pages_compliance.json
+reports/public/*.json
+
+# IDE local settings
+.vscode/
+.idea/
+*.swp
+*.swo
