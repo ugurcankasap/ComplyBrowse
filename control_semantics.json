@@ -1,0 +1,33 @@
+{
+  "schema": "browser-security/control-semantics/v1",
+  "description": "Declares controls whose compliant state is the ABSENCE of configuration. Exception lists, bypass lists and runtime-flag checks are compliant when empty, so 'no policy value found' is a valid PASS for them and must not be audited as an unearned PASS. Everything not declared here follows the default rule: absence of a required policy is a finding.",
+  "absence_is_compliant": {
+    "rationale": "These policies exist to create exceptions to a security control. Configuring them weakens the baseline; leaving them unset is the hardened state.",
+    "policy_key_patterns": [
+      "AllowedForUrls$",
+      "AllowedForOrigins$",
+      "DisabledForUrls$",
+      "DisabledForCas$",
+      "BlockedForUrls$",
+      "^RuntimeProcessFlags$",
+      "ExceptionsForUrls$"
+    ],
+    "policy_keys": [
+      "InsecureContentAllowedForUrls",
+      "CertificateTransparencyEnforcementDisabledForCas",
+      "CertificateTransparencyEnforcementDisabledForUrls",
+      "CertificateTransparencyEnforcementDisabledForLegacyCas",
+      "LegacySameSiteCookieBehaviorEnabledForDomainList",
+      "PdfLocalFileAccessAllowedForDomains",
+      "RemoteAccessHostAllowRemoteAccessConnections",
+      "RuntimeProcessFlags"
+    ],
+    "test_name_patterns": [
+      "(?i)unpacked",
+      "(?i)force[ -]?(installed )?extensions?$",
+      "(?i)command-line hardening",
+      "(?i)runtime flags",
+      "(?i)(exception|allowlist|bypass list)s?$"
+    ]
+  }
+}

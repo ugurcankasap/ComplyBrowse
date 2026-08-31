@@ -1,0 +1,257 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3-Layer Verification Architecture - Decision Topology</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background: #0f1117;
+        color: #e8e8e8;
+        margin: 0;
+        padding: 32px;
+    }
+    .page {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    h1 {
+        font-size: 26px;
+        color: #ffffff;
+        border-left: 6px solid #5b8def;
+        padding-left: 16px;
+        margin-bottom: 4px;
+    }
+    .subtitle {
+        color: #9aa4b2;
+        margin-bottom: 28px;
+        padding-left: 22px;
+        font-size: 14px;
+    }
+    .diagram-card {
+        background: #171a23;
+        border: 1px solid #2a2f3d;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 28px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    }
+    .mermaid { display: flex; justify-content: center; }
+
+    .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+    .legend-box {
+        background: #171a23;
+        border: 1px solid #2a2f3d;
+        border-radius: 10px;
+        padding: 18px 20px;
+    }
+    .legend-box h3 {
+        margin: 0 0 8px 0;
+        font-size: 15px;
+    }
+    .legend-box p {
+        margin: 0;
+        font-size: 13px;
+        color: #b7c0cf;
+        line-height: 1.5;
+    }
+    .L1 h3 { color: #5b8def; }
+    .L2 h3 { color: #e0a63d; }
+    .L3 h3 { color: #c46bd6; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        background: #171a23;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    th, td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #2a2f3d;
+        text-align: left;
+    }
+    th {
+        background: #1e2330;
+        color: #cfd6e4;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    td.pass { color: #4caf50; font-weight: 600; }
+    td.fail { color: #e6543f; font-weight: 600; }
+    td.warn { color: #e0a63d; font-weight: 600; }
+    td.neutral { color: #9aa4b2; font-weight: 600; }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .badge.yes { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge.no { background: rgba(230,84,63,0.15); color: #e6543f; }
+
+    .footer-note {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #6f7889;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-top: 18px;
+    }
+    .stat-card {
+        background: #1e2330;
+        border-radius: 8px;
+        padding: 14px;
+        text-align: center;
+    }
+    .stat-card .num { font-size: 22px; font-weight: 700; }
+    .stat-card .lbl { font-size: 11px; color: #9aa4b2; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+    <h1>3-Layer Verification Architecture</h1>
+    <div class="subtitle">Decision Precedence Topology &mdash; L1/L2/L3 Decision Flow</div>
+
+    <div class="legend-grid">
+        <div class="legend-box L1">
+            <h3>L1 &mdash; Managed Policy</h3>
+            <p>Registry / GPO / MDM / policies.json. Not user-editable, and <b>enforced</b> by the browser. If present, it always has the highest priority.</p>
+        </div>
+        <div class="legend-box L2">
+            <h3>L2 &mdash; User Setting</h3>
+            <p>Preferences / prefs.js. User-revertible. Considered only when L1 cannot produce a result (ABSENT/NOT_APPLICABLE/NOT_ASSESSED).</p>
+        </div>
+        <div class="legend-box L3">
+            <h3>L3 &mdash; Runtime Arbiter</h3>
+            <p>Command-line flags of the running process. Triggered <b>only</b> when L1=COMPLIANT conflicts with L2=NON_COMPLIANT. It can never turn a FAIL into PASS.</p>
+        </div>
+    </div>
+
+    <div class="diagram-card">
+        <div class="mermaid">
+flowchart TD
+    Start(["Reference Control Starts"]) --> L1{"L1: Managed Policy<br/>Registry / GPO / MDM"}
+
+    L1 -->|"COMPLIANT"| ConflictCheck{"Does L2 = NON_COMPLIANT_VALUE<br/>conflict?"}
+    ConflictCheck -->|"No"| PASS_L1(["✅ PASS<br/>Decision: L1 &nbsp;|&nbsp; Counts in score"])
+    ConflictCheck -->|"Yes, conflict exists"| L3{"L3: Runtime Arbiter<br/>Process Command Line"}
+
+    L3 -->|"NON_COMPLIANT_VALUE<br/>(policy neutralized)"| FAIL_L3(["❌ FAIL<br/>Decision: L3 &nbsp;|&nbsp; Counts in score"])
+    L3 -->|"COMPLIANT or NOT_ASSESSED<br/>(no neutralization evidence)"| PASS_L1B(["✅ PASS<br/>Decision: L1 &nbsp;|&nbsp; Counts in score"])
+
+    L1 -->|"NON_COMPLIANT_VALUE<br/>(policy exists, value is wrong)"| FAIL_L1(["❌ FAIL<br/>Decision: L1 &nbsp;|&nbsp; Counts in score<br/><i>L2/L3 are not evaluated</i>"])
+
+    L1 -->|"ABSENT / NOT_APPLICABLE /<br/>NOT_ASSESSED"| L2{"L2: User Setting<br/>Preferences / prefs.js"}
+
+    L2 -->|"COMPLIANT"| PASS_NE(["🟡 PASS_NOT_ENFORCED<br/>Decision: L2 &nbsp;|&nbsp; NOT counted in score"])
+    L2 -->|"Not COMPLIANT"| AbsentCheck{"Is L1 exactly<br/>ABSENT?"}
+
+    AbsentCheck -->|"Yes (policy not deployed)"| FAIL_L1B(["❌ FAIL<br/>Decision: L1 &nbsp;|&nbsp; Counts in score"])
+    AbsentCheck -->|"No (NOT_APPLICABLE/NOT_ASSESSED)"| NonCompCheck{"Is L2 = NON_COMPLIANT_VALUE?"}
+
+    NonCompCheck -->|"Yes"| FAIL_L2(["❌ FAIL<br/>Decision: L2 &nbsp;|&nbsp; Counts in score"])
+    NonCompCheck -->|"No"| NOT_ASSESSED(["⚪ NOT_ASSESSED<br/>Decision: NONE &nbsp;|&nbsp; NOT counted in score"])
+
+    classDef passStyle fill:#1c3d24,stroke:#4caf50,color:#a7e3ac,stroke-width:2px;
+    classDef failStyle fill:#3d1f1c,stroke:#e6543f,color:#f3aba1,stroke-width:2px;
+    classDef warnStyle fill:#3d341a,stroke:#e0a63d,color:#f0d19a,stroke-width:2px;
+    classDef neutralStyle fill:#262b38,stroke:#6f7889,color:#c7cdd8,stroke-width:2px;
+    classDef layerStyle fill:#1a2233,stroke:#5b8def,color:#dce6ff,stroke-width:2px;
+
+    class L1,L2,L3,ConflictCheck,AbsentCheck,NonCompCheck layerStyle;
+    class PASS_L1,PASS_L1B passStyle;
+    class FAIL_L1,FAIL_L1B,FAIL_L2,FAIL_L3 failStyle;
+    class PASS_NE warnStyle;
+    class NOT_ASSESSED neutralStyle;
+        </div>
+    </div>
+
+    <div class="diagram-card">
+        <h3 style="margin-top:0;">Decision Matrix &mdash; Which Layer Overrides Which?</h3>
+        <table>
+            <tr>
+                <th>L1 State</th>
+                <th>Is L2 Effective?</th>
+                <th>Is L3 Effective?</th>
+                <th>Possible Outcome</th>
+                <th>Counted in Score?</th>
+            </tr>
+            <tr>
+                <td>COMPLIANT (no conflict)</td>
+                <td><span class="badge no">No</span></td>
+                <td><span class="badge no">No</span></td>
+                <td class="pass">PASS (L1)</td>
+                <td><span class="badge yes">Yes</span></td>
+            </tr>
+            <tr>
+                <td>COMPLIANT + L2 conflict</td>
+                <td>Trigger</td>
+                <td><span class="badge yes">Yes (arbiter)</span></td>
+                <td class="pass">PASS (L1) / <span class="fail">FAIL (L3)</span></td>
+                <td><span class="badge yes">Yes</span></td>
+            </tr>
+            <tr>
+                <td>NON_COMPLIANT_VALUE</td>
+                <td><span class="badge no">No &mdash; not evaluated</span></td>
+                <td><span class="badge no">No</span></td>
+                <td class="fail">FAIL (L1) &mdash; definitive</td>
+                <td><span class="badge yes">Yes</span></td>
+            </tr>
+            <tr>
+                <td>ABSENT / NOT_APPLICABLE / NOT_ASSESSED</td>
+                <td><span class="badge yes">Yes, can decide</span></td>
+                <td><span class="badge no">No</span></td>
+                <td class="warn">PASS_NOT_ENFORCED (L2) / <span class="fail">FAIL (L1 veya L2)</span> / <span class="neutral">NOT_ASSESSED</span></td>
+                <td>Depends on state</td>
+            </tr>
+        </table>
+        <p class="footer-note">
+            <b>Critical point:</b> when L1=NON_COMPLIANT_VALUE, L2 becomes irrelevant &mdash; real browser behavior is driven by the enforced (incorrect) policy, and local user settings are ignored.
+            L3 can never convert a FAIL into PASS; it can only reveal that an apparent PASS was neutralized at runtime.
+        </p>
+    </div>
+
+    <div class="diagram-card">
+        <h3 style="margin-top:0;">Decision Layer Distribution</h3>
+        <p style="color:#9aa4b2; font-size:13px; margin-top:-6px;">Runtime assessment data is intentionally not bundled with this project.</p>
+        <table>
+            <tr><th>Browser</th><th>Total</th><th>L1</th><th>L2</th><th>L3</th><th>NONE</th></tr>
+            <tr><td>Edge</td><td colspan="5" class="neutral">Generated when an assessment runs</td></tr>
+            <tr><td>Chrome</td><td colspan="5" class="neutral">Generated when an assessment runs</td></tr>
+            <tr><td>Firefox</td><td colspan="5" class="neutral">Generated when an assessment runs</td></tr>
+        </table>
+        <p class="footer-note">
+            L2/L3 being 0 is not a code bug: on this machine, no control has a manually set user-level "COMPLIANT" value (L2=COMPLIANT never occurs), and no L1=COMPLIANT + L2=NON_COMPLIANT conflict appears (L3 is never triggered).
+            In an unmanaged endpoint, this distribution is an expected behavior.
+        </p>
+    </div>
+
+</div>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true }
+    });
+</script>
+</body>
+</html>
+

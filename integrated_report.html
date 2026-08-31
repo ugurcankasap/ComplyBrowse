@@ -1,0 +1,2764 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Compliance Report</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #1e1b4b;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .report-toolbar {
+            margin-top: 14px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .view-toggle {
+            display: inline-flex;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+
+        .toggle-btn {
+            border: none;
+            background: transparent;
+            color: #4b5563;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: #1e1b4b;
+            color: #fff;
+        }
+
+        .legend-box {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .tabs-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 16px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-button.active {
+            color: #1e1b4b;
+            border-bottom-color: #8b5cf6;
+        }
+
+        .tab-button:hover {
+            background: #f3f4f6;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 24px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .test-id {
+            font-weight: 600;
+            color: #1e1b4b;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .control-name {
+            color: #374151;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .status-passed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-unknown {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .verdict-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .verdict-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .verdict-pass-not-enforced {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .verdict-fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .verdict-not-assessed {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+
+        .layer-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            background: #e5e7eb;
+            color: #374151;
+            margin-right: 4px;
+        }
+
+        .layer-badge.l1 {
+            background: #fce7f3;
+            color: #be185d;
+        }
+
+        .layer-badge.l2 {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .layer-badge.l3 {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .expand-btn {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .expand-btn:hover {
+            background: #7c3aed;
+        }
+
+        .expand-btn.expanded {
+            background: #6d28d9;
+        }
+
+        .detail-row {
+            display: none;
+        }
+
+        .detail-row.show {
+            display: table-row;
+        }
+
+        .detail-cell {
+            padding: 20px !important;
+            background: #f9fafb;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .detail-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .detail-section {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .detail-section h4 {
+            color: #1e1b4b;
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 8px;
+        }
+
+        .detail-section p {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .detail-section strong {
+            color: #374151;
+        }
+
+        .remediation-box {
+            background: #fffbeb;
+            border-left: 4px solid #fbbf24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 12px;
+        }
+
+        .remediation-box h5 {
+            color: #92400e;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .remediation-box code {
+            background: #f9fafb;
+            padding: 8px;
+            border-radius: 4px;
+            display: block;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            color: #374151;
+            overflow-x: auto;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .layers-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .layer-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .layer-card.karar {
+            border-color: #8b5cf6;
+            background: #faf5ff;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+        }
+
+        .layer-card h5 {
+            color: #1e1b4b;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .karar-badge {
+            background: #8b5cf6;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        .layer-card p {
+            color: #666;
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+
+        .layer-card strong {
+            color: #374151;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            color: #1e1b4b;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-card .percent {
+            color: #8b5cf6;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .filters {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 12px;
+            background: white;
+            color: #374151;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .copy-btn {
+            margin-left: 8px;
+            padding: 2px 8px;
+            border: 1px solid #c7d2fe;
+            border-radius: 4px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #e0e7ff;
+        }
+
+        .scenario-box {
+            background: #fff7ed;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 8px;
+            border-left: 3px solid #f97316;
+            border: 1px solid #fed7aa;
+        }
+
+        .scenario-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .scenario-header h5 {
+            margin: 0;
+            color: #9a3412;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .scenario-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #ffedd5;
+            color: #9a3412;
+            border: 1px solid #fdba74;
+        }
+
+        .scenario-status {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            color: #7c2d12;
+            line-height: 1.6;
+            background: #fff;
+            border: 1px solid #fde68a;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .scenario-item {
+            background: #fff;
+            border: 1px solid #fed7aa;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .scenario-label {
+            display: block;
+            font-size: 11px;
+            color: #9a3412;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .scenario-value {
+            margin: 0;
+            font-size: 12px;
+            color: #7c2d12;
+            line-height: 1.55;
+            word-break: break-word;
+        }
+
+        .scenario-fallback {
+            margin: 0;
+            font-size: 12px;
+            color: #7c2d12;
+            line-height: 1.6;
+            background: #fff;
+            border: 1px solid #fed7aa;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .group-row td {
+            background: #eef2ff;
+            color: #312e81;
+            font-weight: 700;
+            border-top: 2px solid #c7d2fe;
+            border-bottom: 1px solid #c7d2fe;
+        }
+
+        .group-count {
+            color: #6366f1;
+            font-weight: 600;
+            margin-left: 8px;
+            font-size: 12px;
+        }
+
+        .group-badge {
+            display: inline-block;
+            background: #eef2ff;
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .quick-note {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.5;
+            max-width: 460px;
+        }
+
+        .col-simple {
+            display: none;
+        }
+
+        @media (max-width: 1200px) {
+            .detail-content {
+                grid-template-columns: 1fr;
+            }
+
+            .layers-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .report-toolbar {
+                align-items: flex-start;
+            }
+
+            .legend-box {
+                width: 100%;
+            }
+        }
+
+        /* Enterprise visual refresh */
+        :root {
+            --bg-ink: #0b1324;
+            --bg-navy: #0f1e3a;
+            --panel: #ffffff;
+            --panel-soft: #f6faff;
+            --line-soft: #d7e1ef;
+            --line-mid: #c4d5ea;
+            --text-main: #162338;
+            --text-muted: #4b607a;
+            --brand: #0e7490;
+            --brand-strong: #0b5f75;
+            --shadow-lg: 0 16px 34px rgba(8, 21, 44, 0.14);
+        }
+
+        body {
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            color: var(--text-main);
+            background:
+                radial-gradient(circle at 8% 4%, rgba(56, 189, 248, 0.2) 0%, transparent 38%),
+                radial-gradient(circle at 92% 0%, rgba(20, 184, 166, 0.16) 0%, transparent 34%),
+                linear-gradient(145deg, var(--bg-ink) 0%, var(--bg-navy) 58%, #162f55 100%);
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1720px;
+        }
+
+        .header {
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 18px;
+            background: linear-gradient(150deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 255, 0.93) 100%);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0ea5b7 0%, #22d3ee 45%, #34d399 100%);
+            border-top-left-radius: 18px;
+            border-top-right-radius: 18px;
+        }
+
+        .header h1 {
+            color: #0e2a46;
+            letter-spacing: -0.02em;
+            font-size: 30px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .report-toolbar {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px dashed var(--line-mid);
+        }
+
+        .view-toggle {
+            background: #edf4fd;
+            border: 1px solid #bdd1ea;
+            border-radius: 10px;
+            padding: 3px;
+        }
+
+        .toggle-btn {
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #395272;
+            min-width: 118px;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(160deg, var(--brand) 0%, var(--brand-strong) 100%);
+            color: #fff;
+            box-shadow: 0 6px 14px rgba(14, 116, 144, 0.24);
+        }
+
+        .legend-box span {
+            border: 1px solid var(--line-soft);
+            border-radius: 999px;
+            background: #f8fbff;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #3d536d;
+        }
+
+        .layer-explainer {
+            margin-top: 12px;
+            background: linear-gradient(180deg, #f4fbff 0%, #ecf7ff 100%);
+            border: 1px solid #c9dff2;
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .layer-explainer h3 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #1f4d73;
+        }
+
+        .layer-explainer-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .layer-explainer-item {
+            background: #ffffff;
+            border: 1px solid #d7e7f5;
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+
+        .layer-explainer-item h4 {
+            margin: 0 0 4px 0;
+            font-size: 12px;
+            color: #0f3f63;
+        }
+
+        .layer-explainer-item p {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #3b5876;
+        }
+
+        .tabs-container {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 252, 255, 0.95) 100%);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .tabs {
+            padding: 12px;
+            gap: 10px;
+            border-bottom: 1px solid var(--line-soft);
+            background: linear-gradient(180deg, #f5faff 0%, #eef6ff 100%);
+        }
+
+        .tab-button {
+            margin-bottom: 0;
+            border: 1px solid #d2e0f2;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #36506f;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.22s ease;
+            padding: 12px 14px;
+        }
+
+        .tab-button.active {
+            color: #083d52;
+            border-bottom-color: #56c5df;
+            border-color: #56c5df;
+            background: linear-gradient(180deg, #e6f8fd 0%, #dbf4fb 100%);
+            box-shadow: 0 7px 16px rgba(11, 95, 117, 0.16);
+        }
+
+        .tab-button:hover {
+            background: #f2f8ff;
+            border-color: #b9d2ec;
+        }
+
+        .tab-content {
+            padding: 18px 20px 22px 20px;
+        }
+
+        .summary-stats {
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid #d5e2f1;
+            border-radius: 12px;
+            text-align: left;
+            box-shadow: 0 8px 20px rgba(17, 39, 68, 0.06);
+        }
+
+        .stat-card h3 {
+            color: #5a6f88;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .stat-card .value {
+            color: #12314f;
+            font-size: 30px;
+            letter-spacing: -0.03em;
+        }
+
+        .stat-card .percent {
+            color: #0e7490;
+            font-weight: 800;
+        }
+
+        .filters {
+            position: sticky;
+            top: 10px;
+            z-index: 7;
+            background: rgba(247, 251, 255, 0.94);
+            border: 1px solid #cfe0f4;
+            border-radius: 12px;
+            box-shadow: 0 10px 24px rgba(18, 49, 79, 0.08);
+            padding: 12px;
+            margin-bottom: 14px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #486180;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            border: 1px solid #bfcfe2;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1f3552;
+            padding: 7px 10px;
+            min-height: 34px;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            border-color: #0ea5b7;
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.22);
+        }
+
+        .expand-btn {
+            background: linear-gradient(150deg, var(--brand) 0%, var(--brand-strong) 100%);
+            border-radius: 8px;
+            padding: 7px 12px;
+            box-shadow: 0 8px 14px rgba(14, 116, 144, 0.22);
+        }
+
+        .expand-btn:hover {
+            background: linear-gradient(150deg, #0b677f 0%, #0a5366 100%);
+        }
+
+        .table-wrapper {
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: var(--panel);
+            box-shadow: 0 8px 22px rgba(14, 31, 55, 0.07);
+            max-height: 68vh;
+            overflow: auto;
+        }
+
+        table {
+            font-size: 13px;
+        }
+
+        th {
+            background: linear-gradient(180deg, #edf4fd 0%, #e7f1fd 100%);
+            color: #2f4a69;
+            border-bottom: 1px solid #c7d8ec;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            z-index: 3;
+            padding: 11px 12px;
+        }
+
+        td {
+            border-bottom: 1px solid #ebf0f7;
+            color: #223852;
+            padding: 11px 12px;
+        }
+
+        tbody tr:nth-child(even):not(.detail-row):not(.group-row) {
+            background: #fbfdff;
+        }
+
+        tr:hover {
+            background: #f0f8ff;
+        }
+
+        .test-id {
+            font-family: 'IBM Plex Mono', monospace;
+            color: #0d4c66;
+            font-size: 12px;
+        }
+
+        .group-row td {
+            background: linear-gradient(90deg, #eaf4ff 0%, #f2f8ff 100%);
+            color: #2d4a6a;
+            border-top: 1px solid #c8dcf2;
+            border-bottom: 1px solid #d7e7f8;
+        }
+
+        .group-count {
+            color: #0f6f89;
+        }
+
+        .group-badge {
+            background: #edf7ff;
+            color: #194b78;
+            border: 1px solid #bfdcf5;
+        }
+
+        .quick-note {
+            color: #4a607b;
+        }
+
+        .detail-cell {
+            border-top: 1px solid #d6e2f1;
+            background: #f4f8fe;
+        }
+
+        .detail-section {
+            border: 1px solid #d3e0ef;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(18, 49, 79, 0.05);
+        }
+
+        .detail-section h4 {
+            color: #123d62;
+            border-bottom: 1px solid #dce8f5;
+            font-size: 12px;
+            letter-spacing: 0.03em;
+        }
+
+        .remediation-box {
+            background: #eefcf5;
+            border-left: 4px solid #22a36a;
+            border-radius: 8px;
+            border: 1px solid #c4edd8;
+        }
+
+        .remediation-box h5 {
+            color: #0f6a48;
+        }
+
+        .remediation-box code {
+            font-family: 'IBM Plex Mono', monospace;
+            border: 1px solid #d9e5f2;
+            background: #f8fcff;
+            color: #204563;
+        }
+
+        .layer-card.karar {
+            border-color: #67cde2;
+            background: #ecfbff;
+            box-shadow: 0 0 0 2px rgba(103, 205, 226, 0.24);
+        }
+
+        .karar-badge {
+            background: #0e7490;
+            border-radius: 999px;
+            padding: 2px 8px;
+        }
+
+        .scenario-box {
+            background: #eef7ff;
+            border: 1px solid #cde3f8;
+            border-left: 3px solid #1e88c2;
+        }
+
+        .scenario-header h5,
+        .scenario-label {
+            color: #175c89;
+        }
+
+        .scenario-pill {
+            background: #dff2ff;
+            color: #1b5f8a;
+            border-color: #b8dcf3;
+        }
+
+        .copy-btn {
+            border-color: #b7d3ed;
+            background: #edf6ff;
+            color: #1f4f78;
+            font-weight: 700;
+        }
+
+        .loading {
+            color: #4d627c;
+        }
+
+        .spinner {
+            border-top-color: #0e7490;
+        }
+
+        @media (max-width: 1024px) {
+            body {
+                padding: 14px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .tab-content {
+                padding: 14px;
+            }
+
+            .summary-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .filters {
+                position: static;
+            }
+
+            .table-wrapper {
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .tabs {
+                flex-direction: column;
+            }
+
+            .layer-explainer-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tab-button {
+                width: 100%;
+                text-align: left;
+            }
+
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .filter-group select,
+            .filter-group input,
+            .expand-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="advanced-mode">
+    <div class="container">
+        <div class="header">
+            <h1>Integrated Compliance Report</h1>
+            <p>Test Results + Verification Layers</p>
+            <div class="report-toolbar">
+                <div class="view-toggle" role="status" aria-label="Report view mode">
+                    <button class="toggle-btn active" type="button">Detailed View</button>
+                </div>
+                <div class="legend-box">
+                    <span><strong>PASS:</strong> Compliant</span>
+                    <span><strong>PASS_NOT_ENFORCED:</strong> Compliant but weakly enforced</span>
+                    <span><strong>FAIL:</strong> Non-compliant</span>
+                    <span><strong>NOT_ASSESSED:</strong> Insufficient data</span>
+                </div>
+            </div>
+            <div class="layer-explainer" role="note" aria-label="Layer meaning guide">
+                <h3>Layer Guide (L1 - L2 - L3)</h3>
+                <div class="layer-explainer-grid">
+                    <div class="layer-explainer-item">
+                        <h4>L1 - Managed Policy</h4>
+                        <p>Enterprise-managed policy layer (GPO, MDM, registry, policies.json). This is the highest-priority evidence layer.</p>
+                    </div>
+                    <div class="layer-explainer-item">
+                        <h4>L2 - User Preference</h4>
+                        <p>User/profile settings layer (for example prefs.js). Even when compliant, enforcement may be weak because users can revert it.</p>
+                    </div>
+                    <div class="layer-explainer-item">
+                        <h4>L3 - Runtime Arbiter</h4>
+                        <p>Runtime behavior and process evidence layer. Used to detect drift/bypass and validate the final decision.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('edge')">
+                    <strong>Microsoft Edge</strong>
+                </button>
+                <button class="tab-button" onclick="switchTab('chrome')">
+                    <strong>Google Chrome</strong>
+                </button>
+                <button class="tab-button" onclick="switchTab('firefox')">
+                    <strong>Mozilla Firefox</strong>
+                </button>
+            </div>
+
+            <!-- EDGE TAB -->
+            <div id="edge" class="tab-content active">
+                <div id="edge-summary" class="summary-stats"></div>
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Filter:</label>
+                        <select id="edge-filter" onchange="applyFilters('edge')">
+                            <option value="">All</option>
+                            <option value="PASSED">Status: PASSED</option>
+                            <option value="FAILED">Status: FAILED</option>
+                            <option value="PASS">Verdict: PASS</option>
+                            <option value="PASS_NOT_ENFORCED">Verdict: PASS_NOT_ENFORCED</option>
+                            <option value="FAIL">Verdict: FAIL</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Severity:</label>
+                        <select id="edge-severity-filter" onchange="applyFilters('edge')">
+                            <option value="">All Levels</option>
+                            <option value="CRITICAL">CRITICAL</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="LOW">LOW</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" placeholder="Search by ID, name, or risk group..." onkeyup="applyFilters('edge')" id="edge-search">
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="clearFilters('edge')">Clear Filter</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="exportFilteredCsv('edge')">CSV Export</button>
+                    </div>
+                </div>
+                <div id="edge-content" class="table-wrapper">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHROME TAB -->
+            <div id="chrome" class="tab-content">
+                <div id="chrome-summary" class="summary-stats"></div>
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Filter:</label>
+                        <select id="chrome-filter" onchange="applyFilters('chrome')">
+                            <option value="">All</option>
+                            <option value="PASSED">Status: PASSED</option>
+                            <option value="FAILED">Status: FAILED</option>
+                            <option value="PASS">Verdict: PASS</option>
+                            <option value="PASS_NOT_ENFORCED">Verdict: PASS_NOT_ENFORCED</option>
+                            <option value="FAIL">Verdict: FAIL</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Severity:</label>
+                        <select id="chrome-severity-filter" onchange="applyFilters('chrome')">
+                            <option value="">All Levels</option>
+                            <option value="CRITICAL">CRITICAL</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="LOW">LOW</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" placeholder="Search by ID, name, or risk group..." onkeyup="applyFilters('chrome')" id="chrome-search">
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="clearFilters('chrome')">Clear Filter</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="exportFilteredCsv('chrome')">CSV Export</button>
+                    </div>
+                </div>
+                <div id="chrome-content" class="table-wrapper">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIREFOX TAB -->
+            <div id="firefox" class="tab-content">
+                <div id="firefox-summary" class="summary-stats"></div>
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Filter:</label>
+                        <select id="firefox-filter" onchange="applyFilters('firefox')">
+                            <option value="">All</option>
+                            <option value="PASSED">Status: PASSED</option>
+                            <option value="FAILED">Status: FAILED</option>
+                            <option value="PASS">Verdict: PASS</option>
+                            <option value="PASS_NOT_ENFORCED">Verdict: PASS_NOT_ENFORCED</option>
+                            <option value="FAIL">Verdict: FAIL</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Severity:</label>
+                        <select id="firefox-severity-filter" onchange="applyFilters('firefox')">
+                            <option value="">All Levels</option>
+                            <option value="CRITICAL">CRITICAL</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="LOW">LOW</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" placeholder="Search by ID, name, or risk group..." onkeyup="applyFilters('firefox')" id="firefox-search">
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="clearFilters('firefox')">Clear Filter</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="exportFilteredCsv('firefox')">CSV Export</button>
+                    </div>
+                </div>
+                <div id="firefox-content" class="table-wrapper">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const browsers = ['edge', 'chrome', 'firefox'];
+        const uiState = { viewMode: 'advanced' };
+        const data = {
+            edge: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false },
+            chrome: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false },
+            firefox: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false }
+        };
+
+        const browserReferenceBases = {
+            edge: 'https://learn.microsoft.com/deployedge/microsoft-edge-policies/',
+            chrome: 'https://chromeenterprise.google/policies/',
+            firefox: 'https://mozilla.github.io/policy-templates/'
+        };
+        const criticalPlatformReferenceFallbacks = {
+            edge: {
+                'P2-001': {
+                    intune: 'https://learn.microsoft.com/en-us/intune/app-management/protection/overview',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html'
+                },
+                'P2-002': {
+                    intune: 'https://learn.microsoft.com/en-us/purview/dlp-create-policy-prevent-cloud-sharing-from-edge-biz',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/app_management/blocklisting-apps.html'
+                },
+                'P2-004': {
+                    intune: 'https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/profile_management/mdm_profile_management.html'
+                },
+                'P4-004': {
+                    intune: 'https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/profile_management/mdm_profile_management.html'
+                },
+                'P4-005': {
+                    intune: 'https://learn.microsoft.com/en-us/intune/app-management/protection/overview',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html'
+                },
+                'P6-001': {
+                    intune: 'https://learn.microsoft.com/en-us/purview/dlp-browser-dlp-learn',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/app_management/mdm_app_management.html'
+                }
+            },
+            chrome: {
+                'C-004': {
+                    intune: 'https://learn.microsoft.com/en-us/intune/app-management/protection/overview',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/profile_management/mdm_profile_management.html'
+                },
+                'C-005': {
+                    intune: 'https://learn.microsoft.com/en-us/purview/dlp-browser-dlp-learn',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html'
+                }
+            },
+            firefox: {
+                'F-004': {
+                    intune: 'https://learn.microsoft.com/en-us/purview/dlp-browser-dlp-learn',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html'
+                },
+                'F-006': {
+                    intune: 'https://learn.microsoft.com/en-us/intune/app-management/protection/overview',
+                    manageengine: 'https://www.manageengine.com/mobile-device-management/help/profile_management/mdm_profile_management.html'
+                }
+            }
+        };
+        const DATA_FETCH_TIMEOUT_MS = 15000;
+
+        function setViewMode(mode) {
+            uiState.viewMode = 'advanced';
+            const body = document.body;
+            body.classList.remove('simple-mode', 'advanced-mode');
+            body.classList.add('advanced-mode');
+
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
+            const browser = activeTab.id;
+            const current = data[browser]?.filtered || [];
+            renderTable(browser, current);
+        }
+
+        function truncateText(text, maxLen = 160) {
+            const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+            if (!normalized) return '';
+            if (normalized.length <= maxLen) return normalized;
+
+            const sentenceParts = normalized.match(/[^.!?;:]+[.!?;:]?/g) || [];
+            let built = '';
+
+            for (const rawPart of sentenceParts) {
+                const part = rawPart.trim();
+                if (!part) continue;
+                const candidate = built ? `${built} ${part}` : part;
+
+                if (candidate.length <= maxLen) {
+                    built = candidate;
+                    continue;
+                }
+
+                break;
+            }
+
+            if (built) {
+                const cleaned = built.trim();
+                if (/[.!?;:]$/.test(cleaned)) return cleaned;
+                return `${cleaned}.`;
+            }
+
+            const wordBoundary = normalized.lastIndexOf(' ', maxLen);
+            const safeCut = wordBoundary > 80 ? wordBoundary : maxLen;
+            const clipped = normalized.substring(0, safeCut).trim();
+            return `${clipped}...`;
+        }
+
+        // Legacy result files were produced by an earlier Turkish-language engine.
+        // The report surface is English-only, so stored text is translated at render time.
+        const LEGACY_TEXT_TRANSLATIONS = [
+            [/Bu kontrol runtime-odakli oldugu icin L1\/L2 uygulanabilir degil; L3 kaniti uyumlu oldugundan sonuc PASS\./gi, 'This control is runtime-oriented, so L1/L2 are not applicable; L3 evidence is compliant, therefore the verdict is PASS.'],
+            [/Bu kontrol runtime-odakli oldugu icin L1\/L2 uygulanabilir degil; L3 kaniti uyumsuz oldugundan sonuc FAIL\./gi, 'This control is runtime-oriented, so L1/L2 are not applicable; L3 evidence is non-compliant, therefore the verdict is FAIL.'],
+            [/L1 policy uygun gorunse de L2\/L3 katmanlarinda drift-bypass sinyali var; L3 runtime kaniti policy etkisinin baypas edildigini gosteriyor ve sonuc FAIL\./gi, 'L1 policy appears compliant, but the L2/L3 layers show a drift/bypass signal; L3 runtime evidence indicates the policy effect is bypassed, therefore the verdict is FAIL.'],
+            [/L1 ile L2 arasinda drift\/uyumsuzluk sinyali olsa da L3 runtime kaniti etkili enforcement oldugunu dogruladi; sonuc PASS\./gi, 'Although a drift/mismatch signal exists between L1 and L2, L3 runtime evidence confirmed effective enforcement; the verdict is PASS.'],
+            [/L1 uyumlu gorunse de runtime kaniti policy etkisinin aktif ortamda baypas edildigini gosteriyor; sonuc L3 ile FAIL\./gi, 'L1 appears compliant, but runtime evidence indicates the policy effect is bypassed in the live environment; the verdict is FAIL, decided at L3.'],
+            [/Bu kontrol runtime sinyali iceriyor ve L2 uygulanabilir degil; L3 kaniti uyumlu oldugu icin karar L3 ile PASS\./gi, 'This control carries a runtime signal and L2 is not applicable; L3 evidence is compliant, so the verdict is PASS, decided at L3.'],
+            [/L1 managed policy degeri CIS beklentisiyle eslesiyor ve uygulanmis durumda; nihai karar PASS\./gi, 'The L1 managed policy value matches the CIS expectation and is enforced; the final verdict is PASS.'],
+            [/L1 managed policy mevcut ancak degeri CIS beklentisine uymuyor; policy kullanici ayarlarini ezdigi icin nihai karar FAIL\./gi, 'An L1 managed policy exists but its value does not match the CIS expectation; because managed policy overrides user settings, the final verdict is FAIL.'],
+            [/Ayar yalnizca L2 kullanici seviyesinde uyumlu\. Kullanici tarafindan geri alinabildigi icin sonuc PASS_NOT_ENFORCED olarak isaretlendi\./gi, 'The setting is compliant only at the L2 user level. Because the user can revert it, the verdict is marked PASS_NOT_ENFORCED.'],
+            [/L2 kullanici ayari uyumlu gorunse de L3 runtime kaniti ayarin etkin olmadigini gosteriyor; sonuc FAIL\./gi, 'The L2 user setting appears compliant, but L3 runtime evidence shows the setting is not effective; the verdict is FAIL.'],
+            [/L1 managed policy dagitilmamis; L2 kullanici ayari uyumlu oldugu icin gecici uyum var ancak enforce edilmediginden sonuc PASS_NOT_ENFORCED\./gi, 'No L1 managed policy is deployed; the L2 user setting is compliant, so compliance is temporary and not enforced, therefore the verdict is PASS_NOT_ENFORCED.'],
+            [/L1 managed policy dagitilmamis ve L2 kullanici konfigurasyon degeri acikca uyumsuz; somut L2 kanitiyla sonuc FAIL\./gi, 'No L1 managed policy is deployed and the L2 user configuration value is explicitly non-compliant; based on concrete L2 evidence, the verdict is FAIL.'],
+            [/Firefox icin managed policy de yoksa ve user pref de yoksa ya da okunamiyorsa, default davranis belirsiz kabul edilir; FAIL yerine NOT_ASSESSED verildi\./gi, 'For Firefox, when no managed policy exists and the user preference is missing or unreadable, default behaviour is treated as indeterminate; NOT_ASSESSED was returned instead of FAIL.'],
+            [/Firefox icin managed policy de yoksa ve user pref de tanimli degilse, default davranis belirsiz kabul edilir; FAIL yerine NOT_ASSESSED verildi\./gi, 'For Firefox, when no managed policy exists and no user preference is defined, default behaviour is treated as indeterminate; NOT_ASSESSED was returned instead of FAIL.'],
+            [/L1 managed policy dagitilmamis\. L2 kullanici seviyesinde bu kontrolun pref karsiligi mevcut ancak deger tanimli degil; bu nedenle sonuc FAIL\./gi, 'No L1 managed policy is deployed. A user-level preference equivalent exists for this control at L2, but no value is defined; therefore the verdict is FAIL.'],
+            [/L1 katman kaniti kararsiz, L2 kullanici degeri uyumsuz; mevcut kanitlarla nihai karar FAIL\./gi, 'L1 layer evidence is inconclusive and the L2 user value is non-compliant; with the available evidence the final verdict is FAIL.'],
+            [/L1 managed katman kaniti okunamadi ve L2 tarafinda karsilastirilabilir deger bulunamadi; bu kontrol skor disi birakilarak NOT_ASSESSED verildi\./gi, 'L1 managed-layer evidence could not be read and no comparable value was found at L2; this control was excluded from scoring and marked NOT_ASSESSED.'],
+            [/L1 managed policy bu kontrol icin dagitilmamis ve /gi, 'No L1 managed policy is deployed for this control and '],
+            [/L2 kullanici konfigurasyon degeri de uyumsuz/gi, 'the L2 user configuration value is also non-compliant'],
+            [/L2 kullanici katmaninda da ayar tanimli degil/gi, 'the setting is not defined at the L2 user layer either'],
+            [/bu kontrol policy-odakli ve kullanici katmaninda esit bir karsiligi yok/gi, 'this control is policy-oriented and has no equivalent at the user layer'],
+            [/L2 tarafinda telafi edici bir uyum kaniti elde edilemedi/gi, 'no compensating compliance evidence could be obtained at L2'],
+            [/; bu nedenle sonuc FAIL\./gi, '; therefore the verdict is FAIL.'],
+            [/Kontrol sadece present\/configured kanitina dayaniyor; davranis etkisi sinirli dogrulandi\./gi, 'The control relies on present/configured evidence only; behavioral effect was validated to a limited degree.'],
+            [/Bu kontrol policy-object\/presence sinifinda degil; davranis kaniti zorunlu degil\./gi, 'This control is not in the policy-object/presence class; behavioral evidence is not required.'],
+            [/Test runner bu kontrol icin kesin bir sonuc uretemedi/gi, 'The test runner could not produce a conclusive result for this control'],
+            [/ve hicbir katmanda gercek bir beklenen\/gozlenen deger karsilastirmasi yapilamadi; kontrol skor disi birakilarak NOT_ASSESSED verildi\./gi, 'and no layer performed a real expected-vs-observed value comparison; the control was excluded from scoring and marked NOT_ASSESSED.'],
+            [/Toplayici bu kontrol icin bir esleme\/dogrulama yontemi olmadigini bildirdi\./gi, 'The collector reported that it has no mapping or verification method for this control.'],
+            [/Bu bir kapsam boslugudur, uc noktanin uyumsuzlugu degildir; skor disi birakilarak NOT_ASSESSED verildi\./gi, 'This is a coverage gap rather than an endpoint non-compliance; it was excluded from scoring and marked NOT_ASSESSED.'],
+            [/Behavioral validation gap:/gi, 'Behavioral validation gap:'],
+            [/Kurumsal policy dosyasi bu endpointte bulunamadi/gi, 'The enterprise policy file was not found on this endpoint'],
+            [/tercih anahtari bulunamadi/gi, 'preference key not found'],
+            [/policy anahtari bulunamadi/gi, 'policy key not found'],
+            [/policy anahtarlari bulunamadi/gi, 'policy keys not found'],
+            [/Firefox policies\.json dosyasi bulunamadi\./gi, 'The Firefox policies.json file was not found.'],
+            [/Baska katman enforcement olabilir; manuel davranissal dogrulama gerekir\./gi, 'Enforcement may exist at another layer; manual behavioral verification is required.'],
+            [/Teknik hata nedeniyle kesin karar verilemedi\./gi, 'A conclusive decision could not be made due to a technical error.'],
+            [/Kontrol beklenen durumda degil\./gi, 'The control is not in the expected state.'],
+            [/Kontrol su anda beklenen durumda\./gi, 'The control is currently in the expected state.'],
+            [/Beklenen durum:/gi, 'Expected state:'],
+            [/Gozlenen durum:/gi, 'Observed state:'],
+            [/Beklenen:/gi, 'Expected:'],
+            [/Gozlenen:/gi, 'Observed:']
+        ];
+
+        function toEnglishText(text) {
+            let normalized = String(text || '').replace(/\s+/g, ' ').trim();
+            if (!normalized) return '';
+
+            LEGACY_TEXT_TRANSLATIONS.forEach(([pattern, replacement]) => {
+                normalized = normalized.replace(pattern, replacement);
+            });
+
+            return normalized.trim();
+        }
+
+        function getEnglishFindingDetails(test) {
+            return toEnglishText(test.finding_details || test.details);
+        }
+
+        function getBehavioralValidationSummary(test) {
+            return toEnglishText(test.behavioral_validation_summary)
+                || 'Behavioral validation is missing; enforcement confidence may be limited.';
+        }
+
+        function getQuickNote(test) {
+            if (test.behavioral_validation_gap) {
+                return getBehavioralValidationSummary(test);
+            }
+
+            const reasoning = getReadableReasoning(test);
+            if (reasoning) return truncateText(reasoning, 170);
+
+            const findingDetails = getEnglishFindingDetails(test);
+            if (findingDetails) return truncateText(findingDetails, 170);
+
+            return 'Open details to review technical evidence.';
+        }
+
+        async function fetchJsonWithTimeout(url, timeoutMs = DATA_FETCH_TIMEOUT_MS) {
+            const controller = new AbortController();
+            const timerId = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error(`${url} yuklenemedi (HTTP ${response.status})`);
+                }
+                return await response.json();
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error(`${url} icin zaman asimi (${Math.round(timeoutMs / 1000)} sn)`);
+                }
+                throw error;
+            } finally {
+                clearTimeout(timerId);
+            }
+        }
+
+        // Fetch JSON files
+        async function loadData() {
+            // Load all browsers in parallel
+            const loadPromises = browsers.map(async (browser) => {
+                try {
+                    const testFile = browser === 'edge' ? 'edge_test_results.json' : 
+                                    browser === 'chrome' ? 'chrome_test_results.json' : 
+                                    'firefox_test_results.json';
+                    
+                    const verFile = browser === 'edge' ? 'edge_verified.json' : 
+                                   browser === 'chrome' ? 'chrome_verified.json' : 
+                                   'firefox_verified.json';
+
+                    const mapFile = browser === 'edge' ? 'edge_cis_policy_map.json' :
+                                   browser === 'chrome' ? 'chrome_cis_policy_map.json' :
+                                   'firefox_cis_policy_map.json';
+
+                    const [testRes, verRes, mapRes] = await Promise.all([
+                        fetchJsonWithTimeout(testFile),
+                        fetchJsonWithTimeout(verFile),
+                        fetchJsonWithTimeout(mapFile)
+                    ]);
+
+                    data[browser].testResults = testRes;
+                    data[browser].verified = verRes;
+                    data[browser].policyMap = Array.isArray(mapRes) ? mapRes : [];
+                } catch (error) {
+                    console.error(`Error loading ${browser}:`, error);
+                    document.getElementById(`${browser}-content`).innerHTML = 
+                        `<div class="error">Data loading error: ${error.message}</div>`;
+                }
+            });
+
+            // Wait for all browsers to finish loading (success/fail)
+            await Promise.allSettled(loadPromises);
+            
+            // After all data is loaded, open the requested tab (default: edge)
+            openInitialTab();
+        }
+
+        function openInitialTab() {
+            const hash = window.location.hash.substring(1);
+            switchTab(browsers.includes(hash) ? hash : 'edge');
+        }
+
+        function getEnglishRemediation(test) {
+            const testName = test.test_name || test.name || test.title || 'this control';
+            return `Apply the required enterprise policy for '${testName}', confirm that the intended secure value is enforced, and rerun the assessment.`;
+        }
+
+        function renderBrowser(browser) {
+            const testResults = data[browser].testResults;
+            const verified = data[browser].verified;
+
+            if (!testResults || !verified) return;
+
+            // Extract test arrays (handle both formats)
+            const testArray = Array.isArray(testResults) ? testResults : (testResults.results || []);
+            const verifiedArray = Array.isArray(verified) ? verified : (verified.results || verified.tests || []);
+
+            // Merge data by test_id - use exact match
+            const merged = [];
+            testArray.forEach(test => {
+                const vTest = verifiedArray.find(t => {
+                    // Try exact match first
+                    if (t.test_id === test.test_id) return true;
+                    // Fallback comparison
+                    return false;
+                });
+                
+                const verdict = vTest?.verdict || test.verification_status || 'NOT_ASSESSED';
+                const decidingLayer = vTest?.deciding_layer || 'NONE';
+                const layersData = vTest?.layers || [];
+                
+                merged.push({
+                    ...test,
+                    test_name: vTest?.test_name || test.test_name || '',
+                    remediation: getEnglishRemediation(vTest || test),
+                    verdict: verdict,
+                    deciding_layer: decidingLayer,
+                    verdict_reasoning: vTest?.verdict_reasoning || '',
+                    layers: layersData,
+                    counts_in_score: vTest?.counts_in_score !== undefined ? vTest.counts_in_score : true,
+                    evidence_output: vTest?.evidence_output || test.evidence_output || '',
+                    incident_scenario: vTest?.incident_scenario || test.incident_scenario || '',
+                    details: vTest?.details || test.details || '',
+                    finding_details: vTest?.finding_details || test.finding_details || '',
+                    manual_check_command: vTest?.manual_check_command || test.manual_check_command || '',
+                    retest_command: vTest?.retest_command || test.retest_command || '',
+                    reference: vTest?.reference || test.reference || '',
+                    reference_url: vTest?.reference_url || test.reference_url || '',
+                    intune_reference_url: vTest?.intune_reference_url || test.intune_reference_url || '',
+                    manageengine_reference_url: vTest?.manageengine_reference_url || test.manageengine_reference_url || '',
+                    cis_control: test.cis_controls || []
+                });
+            });
+
+            data[browser].filtered = merged;
+            data[browser].rendered = true;
+
+            // Summary stats
+            const summary = verified.verification_summary || {};
+            renderSummary(browser, summary);
+
+            // Table
+            renderTable(browser, merged);
+        }
+
+        function renderSummary(browser, summary) {
+            const stats = `
+                <div class="stat-card">
+                    <h3>Total Tests</h3>
+                    <div class="value">${summary.total_tests || 0}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>PASS</h3>
+                    <div class="value">${summary.pass || 0}</div>
+                    <div class="percent">${Math.round((summary.pass || 0) / (summary.total_tests || 1) * 100)}%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>PASS (Not Enforced)</h3>
+                    <div class="value">${summary.pass_not_enforced || 0}</div>
+                    <div class="percent">${Math.round((summary.pass_not_enforced || 0) / (summary.total_tests || 1) * 100)}%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>FAIL</h3>
+                    <div class="value">${summary.fail || 0}</div>
+                    <div class="percent">${Math.round((summary.fail || 0) / (summary.total_tests || 1) * 100)}%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Compliance Score</h3>
+                    <div class="value">${Math.round(summary.compliance_score_percent || 0)}%</div>
+                </div>
+            `;
+            document.getElementById(`${browser}-summary`).innerHTML = stats;
+        }
+
+        function getDisplayName(test) {
+            return test.test_name || test.name || test.title || '-';
+        }
+
+        function getRiskGroup(test) {
+            if (test && test.risk_group) {
+                return String(test.risk_group);
+            }
+
+            const text = [
+                getDisplayName(test),
+                test.test_id || '',
+                (test.cis_control || test.cis_controls || []).join(' '),
+                test.policy_key || '',
+                test.remediation || '',
+                test.test_method || '',
+                test.reference || ''
+            ].join(' ').toLowerCase();
+
+            if (/extension|add-on|plugin|forcelist|blocklist|extensionsettings/.test(text)) return 'Extension Threats';
+            if (/password|credential|signin|session|cookie|third[- ]party|autofill|privatebrowsingcapture/.test(text)) return 'Identity & Session Security';
+            if (/dns|doh|webrtc|captive|network|resolver|urlbar|visibility|proxymode|dnsoverhttpsmode/.test(text)) return 'Network & Visibility';
+            if (/tls|https|certificate|ocsp|crl|hsts|quic|proxy|pinning|enterprise_roots|smartscreen/.test(text)) return 'Certificate/Proxy Inspection';
+            if (/download|upload|clipboard|telemetry|sync|history|feedback|healthreport|file_unique_origin|screensharing/.test(text)) return 'Data Exfiltration';
+            if (/ai|saas|copilot|chatgpt|gemini|shadow/.test(text)) return 'Shadow AI & SaaS';
+            if (/update|componentupdates|version|unsupported os|patch|normandy/.test(text)) return 'Patch & Version Hygiene';
+            if (/compliance|sovereignty|regulation|forensic|audit/.test(text)) return 'Compliance & Data Sovereignty';
+            if (/bypass|developer tools|remote debug|blockaboutconfig|securitywarnings|inprivate|incognito/.test(text)) return 'Policy Hardening';
+
+            return 'Policy Hardening';
+        }
+
+        function getEvidenceOutput(test) {
+            const chunks = [];
+            const addChunk = (value) => {
+                const text = String(value || '').trim();
+                if (!text || text === '-' || text.toLowerCase() === 'n/a') return;
+                if (!chunks.includes(text)) chunks.push(text);
+            };
+
+            addChunk(test.evidence_output);
+            addChunk(test.details);
+            addChunk(test.finding_details);
+            addChunk(test.layer_1_details);
+            addChunk(test.layer_2_details);
+            addChunk(test.layer_3_details);
+
+            if (Array.isArray(test.layers) && test.layers.length > 0) {
+                const layerEvidence = test.layers
+                    .map(layer => {
+                        const bits = [];
+                        if (layer?.state) bits.push(`State=${layer.state}`);
+                        if (layer?.expected_value) bits.push(`Expected=${layer.expected_value}`);
+                        if (layer?.observed_value) bits.push(`Observed=${layer.observed_value}`);
+                        if (layer?.details) bits.push(`Details=${layer.details}`);
+                        if (bits.length === 0) return '';
+                        return `${layer.layer || 'Layer'}: ${bits.join(' | ')}`;
+                    })
+                    .filter(Boolean)
+                    .join('\n');
+                addChunk(layerEvidence);
+            }
+
+            if (chunks.length === 0) {
+                addChunk(test.observed_value);
+                addChunk(test.finding_details || test.details);
+            }
+
+            return chunks.length > 0
+                ? chunks.join('\n\n')
+                : 'No viewable raw evidence was found for this control.';
+        }
+
+        function getEvidenceCommand(test) {
+            return test.manual_check_command || test.retest_command || test.reference_command || test.query_command || '';
+        }
+
+        function getPrimaryControlId(test) {
+            const controls = Array.isArray(test.cis_control) ? test.cis_control : (Array.isArray(test.cis_controls) ? test.cis_controls : []);
+            const raw = String(controls[0] || '').trim();
+            if (!raw) return '';
+
+            const match = raw.match(/\d+(?:\.\d+)+/);
+            return match ? match[0] : raw;
+        }
+
+        function getPolicyMapEntry(browser, test) {
+            const controlId = getPrimaryControlId(test);
+            if (!controlId) return null;
+
+            const map = Array.isArray(data[browser]?.policyMap) ? data[browser].policyMap : [];
+            return map.find(item => String(item.control_id || '').trim() === controlId) || null;
+        }
+
+        function isGenericReferenceUrl(url, browser) {
+            const normalized = String(url || '').trim().toLowerCase();
+            if (!normalized) return true;
+
+            const base = String(browserReferenceBases[browser] || '').toLowerCase();
+            if (!base) return false;
+            if (normalized === base) return true;
+            if (normalized === base.replace(/\/$/, '')) return true;
+
+            return false;
+        }
+
+        function buildReferenceUrl(browser, policyKey, mode, controlId) {
+            if (browser === 'chrome' && policyKey) {
+                return `https://chromeenterprise.google/policies/#${encodeURIComponent(policyKey)}`;
+            }
+
+            if (browser === 'edge' && policyKey) {
+                return `https://learn.microsoft.com/deployedge/microsoft-edge-policies/#${encodeURIComponent(policyKey)}`;
+            }
+
+            if (browser === 'firefox') {
+                if (mode === 'PREF' && policyKey) {
+                    return `https://searchfox.org/mozilla-central/search?q=${encodeURIComponent(policyKey)}`;
+                }
+                if (mode === 'RUNTIME') {
+                    return 'https://firefox-source-docs.mozilla.org/browser/command_line_arguments.html';
+                }
+                if (policyKey) {
+                    return `https://mozilla.github.io/policy-templates/#${encodeURIComponent(policyKey)}`;
+                }
+                if (controlId) {
+                    return `https://mozilla.github.io/policy-templates/?control=${encodeURIComponent(controlId)}`;
+                }
+            }
+
+            return '';
+        }
+
+        function getReferenceUrl(browser, test) {
+            const existing = String(test.reference_url || test.reference || '').trim();
+            const controlId = getPrimaryControlId(test);
+            const entry = getPolicyMapEntry(browser, test);
+            const policyKey = String(entry?.policy_key || '').trim();
+            const mode = String(entry?.mode || '').trim().toUpperCase();
+
+            const generated = buildReferenceUrl(browser, policyKey, mode, controlId);
+
+            if (!existing) {
+                return generated || '-';
+            }
+
+            if (isGenericReferenceUrl(existing, browser) && generated) {
+                return generated;
+            }
+
+            return existing;
+        }
+
+        function getPlatformReferences(browser, test) {
+            const explicitIntune = String(test.intune_reference_url || '').trim();
+            const explicitManageEngine = String(test.manageengine_reference_url || '').trim();
+
+            if (explicitIntune || explicitManageEngine) {
+                return {
+                    intune: explicitIntune,
+                    manageengine: explicitManageEngine
+                };
+            }
+
+            const severity = String(test.severity || '').trim().toUpperCase();
+
+            const testId = String(test.test_id || '').trim();
+            const fallback = criticalPlatformReferenceFallbacks[browser]?.[testId];
+            if (fallback) {
+                return {
+                    intune: String(fallback.intune || '').trim(),
+                    manageengine: String(fallback.manageengine || '').trim()
+                };
+            }
+
+            const entry = getPolicyMapEntry(browser, test);
+            const policyKey = String(test.policy_key || entry?.policy_key || '').trim();
+            const mode = String(entry?.mode || '').trim().toUpperCase();
+            const controlId = getPrimaryControlId(test);
+            const testName = String(getDisplayName(test) || '').trim();
+            const verifiedVia = String(test.verified_via || '').trim();
+
+            if (!isMdmManageableTest({ policyKey, mode, verifiedVia })) {
+                return { intune: '', manageengine: '' };
+            }
+
+            const intune = buildIntuneRemediationUrl(browser, { policyKey, controlId, testName, verifiedVia, severity });
+            const manageengine = buildManageEngineRemediationUrl(browser, { policyKey, controlId, testName, verifiedVia, severity });
+
+            return {
+                intune: String(intune || '').trim(),
+                manageengine: String(manageengine || '').trim()
+            };
+        }
+
+        function isMdmManageableTest(context) {
+            const policyKey = String(context?.policyKey || '').trim();
+            const mode = String(context?.mode || '').trim().toUpperCase();
+            const via = String(context?.verifiedVia || '').trim().toLowerCase();
+
+            if (mode === 'RUNTIME') return false;
+            if (policyKey) return true;
+
+            if (/(registry|policy|policies\.json|prefs\.js|preferences|managed|gpo)/.test(via)) return true;
+            if (/(devtools|cdp|runtime|process command line|network config|proxy inspection|external|filesystem|cloud policy)/.test(via)) return false;
+
+            return false;
+        }
+
+        function buildIntuneRemediationUrl(browser, context) {
+            const browserLabel = browser === 'edge'
+                ? 'Microsoft Edge'
+                : (browser === 'chrome' ? 'Google Chrome' : 'Mozilla Firefox');
+
+            // Firefox desktop policy coverage in Intune is limited; keep empty unless explicit mapping exists.
+            if (browser === 'firefox') {
+                return '';
+            }
+
+            const focus = String(context.policyKey || context.controlId || context.testName || '').trim();
+            if (!focus) return '';
+
+            const query = `${focus} Intune ${browserLabel} policy settings catalog`;
+            return `https://learn.microsoft.com/en-us/search/?terms=${encodeURIComponent(query)}`;
+        }
+
+        function buildManageEngineRemediationUrl(browser, context) {
+            const browserLabel = browser === 'edge'
+                ? 'Microsoft Edge'
+                : (browser === 'chrome' ? 'Google Chrome' : 'Mozilla Firefox');
+            const focus = String(context.policyKey || context.controlId || context.testName || '').trim();
+            if (!focus) return '';
+
+            const query = `${focus} ${browserLabel} MDM policy`;
+            return `https://www.manageengine.com/search-results.html?q=${encodeURIComponent(query)}`;
+        }
+
+        function getTestMethodPrimaryLine(browser, test) {
+            const existing = String(test.test_method || '').trim();
+            if (existing) return existing;
+
+            const entry = getPolicyMapEntry(browser, test);
+            const policyKey = String(entry?.policy_key || '').trim();
+            const mode = String(entry?.mode || '').trim().toUpperCase();
+
+            if (!policyKey && !mode) {
+                return 'Control ID -> strict map -> technical artifact lookup.';
+            }
+
+            if ((browser === 'chrome' || browser === 'edge') && policyKey) {
+                return `Control ID -> strict map -> registry key lookup (${policyKey}).`;
+            }
+
+            if (browser === 'firefox' && mode === 'POLICY' && policyKey) {
+                return `Control ID -> strict map -> policies.json lookup (${policyKey}).`;
+            }
+
+            if (browser === 'firefox' && mode === 'PREF' && policyKey) {
+                return `Control ID -> strict map -> prefs.js preference lookup (${policyKey}).`;
+            }
+
+            if (browser === 'firefox' && mode === 'RUNTIME') {
+                return `Control ID -> strict map -> runtime command-line inspection (${policyKey || 'runtime flag'}).`;
+            }
+
+            if (policyKey) {
+                return `Control ID -> strict map -> policy artifact lookup (${policyKey}).`;
+            }
+
+            return 'Control ID -> strict map -> technical artifact lookup.';
+        }
+
+        function getTestMethodPathLine(browser, test) {
+            const entry = getPolicyMapEntry(browser, test);
+            const policyKey = String(entry?.policy_key || '').trim();
+            const mode = String(entry?.mode || '').trim().toUpperCase();
+
+            if (browser === 'chrome' && policyKey) {
+                return `Registry path: HKLM\\SOFTWARE\\Policies\\Google\\Chrome\\${policyKey} (optional HKCU\\SOFTWARE\\Policies\\Google\\Chrome\\${policyKey}).`;
+            }
+
+            if (browser === 'edge' && policyKey) {
+                return `Registry path: HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\${policyKey} (optional HKCU\\SOFTWARE\\Policies\\Microsoft\\Edge\\${policyKey}).`;
+            }
+
+            if (browser === 'firefox' && mode === 'POLICY' && policyKey) {
+                return `File path: %APPDATA%\\Mozilla\\Firefox\\policies.json -> Policies.${policyKey}.`;
+            }
+
+            if (browser === 'firefox' && mode === 'PREF' && policyKey) {
+                return `File path: %APPDATA%\\Mozilla\\Firefox\\Profiles\\<profile>\\prefs.js -> ${policyKey}.`;
+            }
+
+            if (browser === 'firefox' && mode === 'RUNTIME') {
+                return 'Source path: Process command-line arguments (no static registry key).';
+            }
+
+            return 'Source path: Verify using the evidence output/details fields in the test result.';
+        }
+
+        function getEvidenceSnippet(test, maxLen = 110) {
+            const text = getEvidenceOutput(test);
+            if (!text) return '';
+            const normalized = String(text).replace(/\s+/g, ' ').trim();
+            return normalized.length > maxLen ? `${normalized.substring(0, maxLen)}...` : normalized;
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function copyTextFromAttr(button) {
+            const text = String(button?.getAttribute('data-copy') || '').trim();
+            if (!text) return;
+
+            const setCopiedState = () => {
+                const oldLabel = button.textContent;
+                button.textContent = 'Copied';
+                setTimeout(() => {
+                    button.textContent = oldLabel;
+                }, 1200);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(setCopiedState)
+                    .catch(() => {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        setCopiedState();
+                    });
+                return;
+            }
+
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            setCopiedState();
+        }
+
+        function getReadableReasoning(test) {
+            const raw = (test.verdict_reasoning || '').trim();
+            if (!raw) return '';
+
+            let normalized = raw;
+            const translations = [
+                [/Managed policy is compliant but runtime evidence shows it is being neutralised\./gi, 'L1 policy appears compliant, but L3 runtime evidence indicates policy effect bypass.'],
+                [/Managed policy is compliant and overrides the conflicting user preference\./gi, 'L1 managed policy is compliant and takes precedence over conflicting L2 data; decision remains L1.'],
+                [/Managed policy value matches the CIS expectation and is enforced\./gi, 'L1 managed policy value matches CIS expectation and is effectively enforced.'],
+                [/Managed policy is present with a non-compliant value; it overrides any user setting\./gi, 'L1 managed policy exists but its value is non-compliant; policy precedence determines the final decision.'],
+                [/Setting is compliant only in user configuration; the user can revert it at any time\./gi, 'The setting is compliant only at L2 user level; because users can revert it, it is not treated as enforced.'],
+                [/No managed policy is deployed for this control and /gi, 'No L1 managed policy deployment exists for this control, and '],
+                [/the user configuration value is non-compliant/gi, 'L2 user value is also non-compliant'],
+                [/the setting is not configured at the user layer either/gi, 'The setting is not configured at the L2 user layer either'],
+                [/this is a policy-only control with no user-level equivalent/gi, 'this is a policy-centric control with no equivalent at the user layer'],
+                [/no compensating user-level evidence could be obtained/gi, 'no compensating compliance evidence could be obtained at L2 user level'],
+                [/Managed layer inconclusive and the user configuration value is non-compliant\./gi, 'L1 evidence is inconclusive, and L2 user value is non-compliant, so the final result is FAIL.'],
+                [/Managed-layer evidence could not be read and no user-level value comparison was possible; excluded from the compliance score\./gi, 'L1 evidence could not be read and no L2 comparison was possible; the control is marked NOT_ASSESSED and excluded from score.']
+            ];
+
+            translations.forEach(([pattern, replacement]) => {
+                normalized = normalized.replace(pattern, replacement);
+            });
+
+            const layer = test.deciding_layer ? `Deciding layer: ${test.deciding_layer}. ` : '';
+            return toEnglishText(`${layer}${normalized}`);
+        }
+
+        function isGenericScenarioText(text) {
+            const normalized = String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            if (!normalized) return true;
+            if (normalized.length < 140) return true;
+
+            const genericMarkers = [
+                /when the control is not enforced, a threat actor/,
+                /can bypass security barriers indirectly/,
+                /even if attack likelihood is reduced/,
+                /periodic verification against configuration drift/
+            ];
+            return genericMarkers.some(pattern => pattern.test(normalized));
+        }
+
+        function getScenarioProfile(test) {
+            const name = (test.test_name || test.name || '').toLowerCase();
+
+            const defaults = {
+                attackPath: 'leveraging browser security configuration gaps to progress through user sessions',
+                technicalImpact: 'gradual bypass of client-side security controls',
+                businessImpact: 'increased account security, data privacy, and compliance risk',
+                hunterNote: 'EDR timeline, browser process command-line, and policy artifact integrity should be correlated together'
+            };
+
+            if (/incognito|inprivate|private browsing/.test(name)) {
+                return {
+                    attackPath: 'policy-bypassing web access through low-trace private sessions',
+                    technicalImpact: 'forensic backtracking difficulty due to reduced history/cookie artifacts',
+                    businessImpact: 'weaker evidence chain in insider cases and longer incident closure time',
+                    hunterNote: 'Proxy logs and endpoint browser session metadata should be correlated by timestamp'
+                };
+            }
+            if (/password|credential/.test(name)) {
+                return {
+                    attackPath: 'collection and reuse of saved credentials from a compromised endpoint',
+                    technicalImpact: 'use of browser vault data in credential stuffing or token replay stages',
+                    businessImpact: 'account takeover, MFA fatigue triggering, and unauthorized actions in critical applications',
+                    hunterNote: 'Impossible travel, anomalous logins, and multi-ASN sessions for the same user should be monitored together'
+                };
+            }
+            if (/extension|add-on|plugin/.test(name)) {
+                return {
+                    attackPath: 'abuse of browser permission model via unauthorized extension distribution',
+                    technicalImpact: 'DOM access, cookie harvesting, and form-content exfiltration',
+                    businessImpact: 'Data leakage in SaaS sessions and elevated supply-chain breach likelihood',
+                    hunterNote: 'Extension ID allowlist drift analysis and newly installed extension publisher validation should be performed'
+                };
+            }
+            if (/safe browsing|security bypass|malicious|phishing/.test(name)) {
+                return {
+                    attackPath: 'redirecting users to malicious targets while bypassing security warnings',
+                    technicalImpact: 'phishing kit veya drive-by payload teslimatinin erken asamada engellenememesi',
+                    businessImpact: 'Credential exposure, financial loss, and increased incident volume',
+                    hunterNote: 'Mail gateway events and browser destination reputation telemetry should be reviewed together'
+                };
+            }
+            if (/sync|account|firefox accounts/.test(name)) {
+                return {
+                    attackPath: 'synchronization of corporate data with unmanaged cloud accounts',
+                    technicalImpact: 'uncontrolled transfer of bookmarks, history, form data, and in some cases session artifacts',
+                    businessImpact: 'Data sovereignty violations, regulatory non-compliance, and legal penalty risk',
+                    hunterNote: 'Identity provider logs should be correlated with browser sync events at user level'
+                };
+            }
+            if (/dns|doh/.test(name)) {
+                return {
+                    attackPath: 'traffic redirection manipulation due to weakened resolver control',
+                    technicalImpact: 'Silent redirection to fake corporate portals or C2-like domains',
+                    businessImpact: 'Higher phishing success rates and increased data exfiltration risk',
+                    hunterNote: 'dns query pattern sapmalari ve yeni gorulen domain oranlari alarma baglanmalidir'
+                };
+            }
+            if (/proxy|pac/.test(name)) {
+                return {
+                    attackPath: 'direct internet egress outside mandatory outbound control',
+                    technicalImpact: 'bypass of URL filtering, TLS inspection, and DLP layers',
+                    businessImpact: 'late detection of data leakage due to loss of observability',
+                    hunterNote: 'Firewall egress policy and SNI telemetry should be jointly reviewed for proxy-bypassed hosts'
+                };
+            }
+            if (/developer|devtools|remote debug/.test(name)) {
+                return {
+                    attackPath: 'tampering with client-side security controls through exposed debug interfaces',
+                    technicalImpact: 'script injection, runtime manipulation, and neutralization of security controls',
+                    businessImpact: 'harder detection in insider-threat scenarios and broader incident blast radius',
+                    hunterNote: 'Browser startup parameters and open debug ports should be included in continuous posture checks'
+                };
+            }
+            if (/download|file/.test(name)) {
+                return {
+                    attackPath: 'malicious payload delivery to endpoint through uncontrolled download flow',
+                    technicalImpact: 'faster persistence and lateral movement steps after initial access',
+                    businessImpact: 'ransomware impact, operational interruption, and recovery cost',
+                    hunterNote: 'Download source reputation, hash triage, and child-process chain correlation should be performed'
+                };
+            }
+            if (/cookie|third-party|tracking/.test(name)) {
+                return {
+                    attackPath: 'session context tracking and token abuse',
+                    technicalImpact: 'higher session fixation/hijack risk and weakened privacy controls',
+                    businessImpact: 'increased account abuse and data protection violation risk',
+                    hunterNote: 'Track abnormal session lifetime, cookie domain deviations, and multi-location access with the same token'
+                };
+            }
+            if (/tls|https|certificate|ocsp|crl|hsts|mixed content|quic/.test(name)) {
+                return {
+                    attackPath: 'attacks on traffic integrity through insufficient secure-channel hardening',
+                    technicalImpact: 'degradation of encrypted traffic trust via downgrade or MITM-like techniques',
+                    businessImpact: 'privacy and integrity loss risk during sensitive data transfer',
+                    hunterNote: 'TLS handshake anomalies, downgrade indicators, and certificate mismatches should be correlated in SIEM'
+                };
+            }
+
+            return defaults;
+        }
+
+        function buildProfessionalScenario(test) {
+            const title = test.test_name || test.name || test.test_id || 'Control';
+            const status = String(test.status || '').toUpperCase();
+            const verdict = String(test.verdict || '').toUpperCase();
+            const profile = getScenarioProfile(test);
+
+            const decidingLayer = test.deciding_layer || 'NONE';
+            const deciding = Array.isArray(test.layers)
+                ? test.layers.find(layer => layer.layer === decidingLayer)
+                : null;
+
+            const expected = (deciding?.expected_value || test.expected_value || '').trim().replace(/\.+$/, '');
+            const observed = (deciding?.observed_value || test.observed_value || '').trim().replace(/\.+$/, '');
+            const evidence = String(getEvidenceOutput(test) || '').replace(/\s+/g, ' ').trim();
+
+            if (status === 'PASSED' && verdict === 'PASS') {
+                return `Status (${title}): Control appears active and enforced. Potential attack path: ${profile.attackPath}; the current policy breaks a critical step in this chain. Operational note: continuous posture monitoring should be maintained for drift or policy rollback risk.`;
+            }
+
+            const statusLine = verdict === 'NOT_ASSESSED'
+                ? `Status (${title}): A definitive decision could not be produced for this control; this creates a visibility gap.`
+                : `Status (${title}): The control is not at the expected hardening level (${verdict || status || 'UNKNOWN'}).`;
+
+            const expectedNote = expected ? ` Expected value: ${expected}.` : '';
+            const observedNote = observed ? ` Observed value: ${observed}.` : '';
+            const evidenceNote = evidence && evidence !== '-' && evidence !== 'No viewable raw evidence was found for this control.'
+                ? ` Evidence summary: ${evidence}.`
+                : '';
+
+            return `${statusLine} Threat flow: ${profile.attackPath}. Hunter note: ${profile.hunterNote}.${expectedNote}${observedNote}${evidenceNote}`.trim();
+        }
+
+        function getReadableScenario(test) {
+            return buildProfessionalScenario(test);
+        }
+
+        function extractScenarioField(text, label, nextLabels) {
+            const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedNext = nextLabels
+                .map(item => item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                .join('|');
+            const pattern = new RegExp(`${escapedLabel}\\s*:?\\s*(.+?)(?=\\s*(?:${escapedNext})\\s*:|$)`, 'i');
+            const match = String(text || '').match(pattern);
+            return match ? match[1].replace(/\s+/g, ' ').trim() : '';
+        }
+
+        function parseScenarioNarrative(text) {
+            const source = String(text || '').replace(/\s+/g, ' ').trim();
+            if (!source) {
+                return {
+                    status: '',
+                    threatFlow: '',
+                    technicalImpact: '',
+                    businessImpact: '',
+                    expected: '',
+                    observed: '',
+                    evidence: '',
+                    hunterNote: '',
+                    operationalNote: ''
+                };
+            }
+
+            const status = extractScenarioField(source, 'State', [
+                'Threat Scenario',
+                'Threat flow',
+                'Technical Impact',
+                'Technical impact',
+                'Business Impact',
+                'Business impact',
+                'Expected',
+                'Expected value',
+                'Observed',
+                'Observed value',
+                'Evidence summary',
+                'Hunter note',
+                'Operational note'
+            ]);
+            const threatFlow = extractScenarioField(source, 'Threat flow', [
+                'Technical Impact',
+                'Technical impact',
+                'Business Impact',
+                'Business impact',
+                'Expected',
+                'Expected value',
+                'Observed',
+                'Observed value',
+                'Evidence summary',
+                'Hunter note',
+                'Operational note'
+            ]) || extractScenarioField(source, 'Threat Scenario', [
+                'Technical Impact',
+                'Technical impact',
+                'Business Impact',
+                'Business impact',
+                'Expected',
+                'Expected value',
+                'Observed',
+                'Observed value',
+                'Evidence summary',
+                'Hunter note',
+                'Operational note'
+            ]);
+
+            return {
+                status,
+                threatFlow,
+                expected: extractScenarioField(source, 'Expected value', [
+                    'Observed', 'Observed value', 'Evidence summary', 'Hunter note', 'Operational note'
+                ]) || extractScenarioField(source, 'Expected', [
+                    'Observed', 'Observed value', 'Evidence summary', 'Hunter note', 'Operational note'
+                ]),
+                observed: extractScenarioField(source, 'Observed value', [
+                    'Evidence summary', 'Hunter note', 'Operational note'
+                ]),
+                evidence: extractScenarioField(source, 'Evidence summary', [
+                    'Hunter note', 'Operational note'
+                ]),
+                hunterNote: extractScenarioField(source, 'Hunter note', [
+                    'Operational note'
+                ]),
+                operationalNote: extractScenarioField(source, 'Operational note', [])
+            };
+        }
+
+        function getScenarioPill(test) {
+            const verdict = String(test.verdict || '').toUpperCase();
+            if (verdict === 'FAIL') return 'Priority: High';
+            if (verdict === 'PASS_NOT_ENFORCED') return 'Priority: Medium';
+            if (verdict === 'NOT_ASSESSED') return 'Priority: Review';
+            return 'Priority: Monitor';
+        }
+
+        function renderScenarioField(label, value) {
+            if (!value) return '';
+            return `
+                <div class="scenario-item">
+                    <span class="scenario-label">${escapeHtml(label)}</span>
+                    <p class="scenario-value">${escapeHtml(value)}</p>
+                </div>
+            `;
+        }
+
+        function renderScenarioBlock(test) {
+            const scenarioText = getReadableScenario(test);
+            const parsed = parseScenarioNarrative(scenarioText);
+
+            const structured = [
+                renderScenarioField('Threat Flow', parsed.threatFlow),
+                renderScenarioField('Expected State', parsed.expected),
+                renderScenarioField('Observed State', parsed.observed),
+                renderScenarioField('Evidence Summary', parsed.evidence),
+                renderScenarioField('Hunter Note', parsed.hunterNote),
+                renderScenarioField('Operational Note', parsed.operationalNote)
+            ].filter(Boolean).join('');
+
+            const statusHtml = parsed.status
+                ? `<p class="scenario-status">${escapeHtml(parsed.status)}</p>`
+                : '';
+
+            const contentHtml = structured
+                ? `<div class="scenario-grid">${structured}</div>`
+                : `<p class="scenario-fallback">${escapeHtml(scenarioText)}</p>`;
+
+            return `
+                <div class="scenario-box">
+                    <div class="scenario-header">
+                        <h5>Potential Incident Scenario</h5>
+                        <span class="scenario-pill">${escapeHtml(getScenarioPill(test))}</span>
+                    </div>
+                    ${statusHtml}
+                    ${contentHtml}
+                </div>
+            `;
+        }
+
+        function renderTable(browser, tests) {
+            const groupOrder = [
+                'Policy Hardening',
+                'Data Exfiltration',
+                'Identity & Session Security',
+                'Extension Threats',
+                'Network & Visibility',
+                'Shadow AI & SaaS',
+                'Certificate/Proxy Inspection',
+                'Patch & Version Hygiene',
+                'Compliance & Data Sovereignty'
+            ];
+
+            const simpleMode = uiState.viewMode === 'simple';
+            const columnCount = simpleMode ? 6 : 10;
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Test ID</th>
+                            <th>Name</th>
+                            <th>Verdict</th>
+                            <th class="col-simple">Quick Note</th>
+                            <th class="col-simple">Risk Grubu</th>
+                            <th class="col-advanced">Reference Control</th>
+                            <th class="col-advanced">Grup</th>
+                            <th class="col-advanced">Status</th>
+                            <th class="col-advanced">Decision Layer</th>
+                            <th class="col-advanced">Reference URL</th>
+                            <th class="col-advanced">Remediation</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            const grouped = new Map();
+            tests.forEach(test => {
+                const groupName = getRiskGroup(test);
+                if (!grouped.has(groupName)) grouped.set(groupName, []);
+                grouped.get(groupName).push(test);
+            });
+
+            const orderedGroups = [
+                ...groupOrder.filter(name => grouped.has(name)),
+                ...Array.from(grouped.keys()).filter(name => !groupOrder.includes(name)).sort((a, b) => a.localeCompare(b))
+            ];
+
+            orderedGroups.forEach(groupName => {
+                const items = grouped.get(groupName) || [];
+                items.sort((a, b) => String(a.test_id || '').localeCompare(String(b.test_id || '')));
+
+                html += `
+                    <tr class="group-row">
+                        <td colspan="${columnCount}">${escapeHtml(groupName)} <span class="group-count">(${items.length} madde)</span></td>
+                    </tr>
+                `;
+
+                items.forEach(test => {
+                const statusClass = test.status === 'PASSED' ? 'status-passed' : test.status === 'FAILED' ? 'status-failed' : 'status-unknown';
+                const verdictClass = test.verdict === 'PASS' ? 'verdict-pass' :
+                                    test.verdict === 'PASS_NOT_ENFORCED' ? 'verdict-pass-not-enforced' :
+                                    test.verdict === 'FAIL' ? 'verdict-fail' :
+                                    test.verdict === 'NOT_ASSESSED' ? 'verdict-not-assessed' : '';
+
+                const layerClass = test.deciding_layer ? test.deciding_layer.toLowerCase() : '';
+                const remediationText = test.remediation ? `${test.remediation.split('\n')[0].substring(0, 50)}...` : '-';
+                const displayName = getDisplayName(test);
+                const control = Array.isArray(test.cis_control) && test.cis_control.length > 0 ? test.cis_control[0] : '-';
+                const detailId = `${browser}-${(test.test_id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+                const refUrl = getReferenceUrl(browser, test);
+                const quickNote = getQuickNote(test);
+                const refCell = refUrl && refUrl !== '-'
+                    ? `<a href="${escapeHtml(refUrl)}" target="_blank" rel="noopener noreferrer">Reference</a>`
+                    : '-';
+
+                html += `
+                    <tr>
+                        <td class="test-id">${test.test_id || '-'}</td>
+                        <td>${displayName}</td>
+                        <td>
+                            <span class="verdict-badge ${verdictClass}">${test.verdict || '-'}</span>
+                        </td>
+                        <td class="col-simple"><div class="quick-note">${escapeHtml(quickNote)}</div></td>
+                        <td class="col-simple"><span class="group-badge">${escapeHtml(groupName)}</span></td>
+                        <td class="control-name col-advanced">${control}</td>
+                        <td class="col-advanced"><span class="group-badge">${escapeHtml(groupName)}</span></td>
+                        <td class="col-advanced">
+                            <span class="status-badge ${statusClass}">${test.status || '-'}</span>
+                        </td>
+                        <td class="col-advanced">
+                            <span class="layer-badge ${layerClass}">${test.deciding_layer || 'NONE'}</span>
+                        </td>
+                        <td class="col-advanced">${refCell}</td>
+                        <td class="col-advanced">${remediationText}</td>
+                        <td>
+                            <button class="expand-btn" id="btn-${detailId}" onclick="toggleDetail('${detailId}')">
+                                Detaylar
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="detail-${detailId}" class="detail-row">
+                        <td colspan="${columnCount}" class="detail-cell">
+                            ${renderDetail(test, browser)}
+                        </td>
+                    </tr>
+                `;
+                });
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById(`${browser}-content`).innerHTML = html;
+        }
+
+        function renderDetail(test, browser) {
+            let html = `<div class="detail-content">`;
+            const referenceUrl = getReferenceUrl(browser, test);
+            const referenceMarkup = referenceUrl && referenceUrl !== '-'
+                ? `<a href="${escapeHtml(referenceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(referenceUrl)}</a>`
+                : '-';
+            const platformRefs = getPlatformReferences(browser, test);
+            const intuneUrl = String(platformRefs.intune || '').trim();
+            const manageEngineUrl = String(platformRefs.manageengine || '').trim();
+            const intuneMarkup = intuneUrl
+                ? `<a href="${escapeHtml(intuneUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(intuneUrl)}</a>`
+                : '-';
+            const manageEngineMarkup = manageEngineUrl
+                ? `<a href="${escapeHtml(manageEngineUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(manageEngineUrl)}</a>`
+                : '-';
+            const testMethodPrimary = getTestMethodPrimaryLine(browser, test);
+            const testMethodPath = getTestMethodPathLine(browser, test);
+
+            // Left: Test Info + Remediation
+            html += `
+                <div class="detail-section">
+                    <h4>Test Information</h4>
+                    <p><strong>Test ID:</strong> ${test.test_id}</p>
+                    <p><strong>Name:</strong> ${getDisplayName(test)}</p>
+                    <p><strong>Reference Control:</strong> ${test.cis_control?.join(', ') || test.cis_controls?.join(', ') || '-'}</p>
+                    <p><strong>Status:</strong> ${test.status}</p>
+                    <p><strong>Verdict:</strong> ${test.verdict}</p>
+                    ${test.deciding_layer ? `<p><strong>Decision Layer:</strong> ${test.deciding_layer}</p>` : ''}
+                    <p><strong>Reference URL:</strong> ${referenceMarkup}</p>
+                    <p><strong>Intune Reference:</strong> ${intuneMarkup}</p>
+                    <p><strong>ManageEngine Reference:</strong> ${manageEngineMarkup}</p>
+                    <p><strong>Finding Details:</strong> ${escapeHtml(getEnglishFindingDetails(test))}</p>
+                    <p><strong>Quick Summary:</strong> ${escapeHtml(getQuickNote(test))}</p>
+
+                    ${test.behavioral_validation_gap ? `
+                        <div style="background-color: #fff4e5; padding: 8px; margin-top: 8px; border-radius: 4px; border-left: 3px solid #f59e0b;">
+                            <h5 style="margin: 0 0 4px 0;">Behavioral Validation Warning</h5>
+                            <p style="margin: 0; font-size: 12px;">${escapeHtml(getBehavioralValidationSummary(test))}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${(testMethodPrimary || testMethodPath) ? `
+                        <div style="background-color: #f0f0f0; padding: 8px; margin-top: 8px; border-radius: 4px;">
+                            <h5 style="margin: 0 0 4px 0;">Test Method</h5>
+                            ${testMethodPrimary ? `<p style="margin: 0; font-size: 12px;">${escapeHtml(testMethodPrimary)}</p>` : ''}
+                            ${testMethodPath ? `<p style="margin: 4px 0 0 0; font-size: 12px;"><strong>Technical Path:</strong> ${escapeHtml(testMethodPath)}<button class="copy-btn" type="button" data-copy="${escapeHtml(testMethodPath)}" onclick="copyTextFromAttr(this)">Copy</button></p>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${renderScenarioBlock(test)}
+                    
+                    ${test.remediation ? `
+                        <div class="remediation-box">
+                            <h5>Remediation</h5>
+                            <code>${test.remediation}</code>
+                        </div>
+                    ` : ''}
+
+                    <div style="background-color: #f5f8ff; padding: 10px; margin-top: 10px; border-radius: 6px; border-left: 3px solid #1f6feb;">
+                        <h5 style="margin: 0 0 6px 0;">Evidence / Query Output</h5>
+                        ${getEvidenceCommand(test) ? `<p style="margin: 0 0 6px 0; font-size: 12px;"><strong>Command:</strong> <code>${escapeHtml(getEvidenceCommand(test))}</code></p>` : ''}
+                        <pre style="margin: 0; font-size: 12px; white-space: pre-wrap; word-break: break-word; background: #fff; border: 1px solid #d0d7de; border-radius: 4px; padding: 8px;">${escapeHtml(getEvidenceOutput(test))}</pre>
+                    </div>
+                </div>
+            `;
+
+            // Right: Verification Layers
+            if (test.layers && Array.isArray(test.layers) && test.layers.length > 0) {
+                html += `<div class="detail-section">
+                    <h4>Verification Layers</h4>
+                    <div class="layers-grid">`;
+
+                const layerNames = { L1: 'L1 - Managed Policy', L2: 'L2 - User Preference', L3: 'L3 - Runtime Arbiter' };
+                
+                test.layers.forEach(layer => {
+                    const isKarar = layer.layer === test.deciding_layer;
+                    html += `
+                        <div class="layer-card ${isKarar ? 'karar' : ''}">
+                            <h5>
+                                ${layerNames[layer.layer] || layer.layer}
+                                ${isKarar ? '<span class="karar-badge">DECISION</span>' : ''}
+                            </h5>
+                            <p><strong>State:</strong> ${layer.state || '-'}</p>
+                            <p><strong>Expected:</strong> ${layer.expected_value || '-'}</p>
+                            <p><strong>Observed:</strong> ${layer.observed_value || '-'}</p>
+                            <p><strong>Enforced:</strong> ${layer.enforced !== undefined ? (layer.enforced ? 'Yes' : 'No') : '-'}</p>
+                            ${layer.details ? `<p><strong>Details:</strong> ${layer.details}</p>` : ''}
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            } else {
+                // Fallback: Show layer info from old format fields if present
+                if (test.layer_1_status || test.layer_2_status || test.layer_3_status) {
+                    html += `<div class="detail-section">
+                        <h4>Verification Layers</h4>`;
+                    
+                    if (test.layer_1_status) {
+                        html += `
+                            <div style="background: #f9f9f9; padding: 8px; margin-bottom: 8px; border-left: 3px solid #4CAF50;">
+                                <p style="margin: 0;"><strong>Layer 1 - ${test.layer_1_method || 'Policy'}:</strong> ${test.layer_1_status}</p>
+                                ${test.layer_1_details ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">${test.layer_1_details}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                    if (test.layer_2_status) {
+                        html += `
+                            <div style="background: #f9f9f9; padding: 8px; margin-bottom: 8px; border-left: 3px solid #2196F3;">
+                                <p style="margin: 0;"><strong>Layer 2 - ${test.layer_2_method || 'Config'}:</strong> ${test.layer_2_status}</p>
+                                ${test.layer_2_details ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">${test.layer_2_details}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                    if (test.layer_3_status) {
+                        html += `
+                            <div style="background: #f9f9f9; padding: 8px; margin-bottom: 8px; border-left: 3px solid #FF9800;">
+                                <p style="margin: 0;"><strong>Layer 3 - ${test.layer_3_method || 'Runtime'}:</strong> ${test.layer_3_status}</p>
+                                ${test.layer_3_details ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #666;">${test.layer_3_details}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    html += `</div>`;
+                }
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function toggleDetail(id) {
+            const detailRow = document.getElementById(`detail-${id}`);
+            const btn = document.getElementById(`btn-${id}`);
+            
+            detailRow.classList.toggle('show');
+            btn.classList.toggle('expanded');
+        }
+
+        function switchTab(browser) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(browser).classList.add('active');
+            
+            // Find and activate the correct tab button
+            const buttons = document.querySelectorAll('.tab-button');
+            const browserIndex = ['edge', 'chrome', 'firefox'].indexOf(browser);
+            if (browserIndex >= 0 && buttons[browserIndex]) {
+                buttons[browserIndex].classList.add('active');
+            }
+            
+            // Render the selected browser's data once (lazy render)
+            if (!data[browser].rendered && data[browser].testResults && data[browser].verified) {
+                renderBrowser(browser);
+            }
+        }
+
+        // Check URL hash and open appropriate tab
+        function checkHashAndOpenTab() {
+            const hash = window.location.hash.substring(1); // Remove # symbol
+            if (browsers.includes(hash)) {
+                switchTab(hash);
+            }
+        }
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', () => {
+            checkHashAndOpenTab();
+        });
+
+        function applyFilters(browser) {
+            const filtered = getFilteredTests(browser);
+            renderTable(browser, filtered);
+        }
+
+        function getFilteredTests(browser) {
+            const selectEl = document.getElementById(`${browser}-filter`);
+            const severityEl = document.getElementById(`${browser}-severity-filter`);
+            const select = selectEl ? selectEl.value : '';
+            const severity = severityEl ? severityEl.value : '';
+            const search = document.getElementById(`${browser}-search`)?.value.toUpperCase() || '';
+            
+            let filtered = data[browser].filtered || [];
+            
+            if (select || severity || search) {
+                filtered = filtered.filter(test => {
+                    const matchStatus = !select || test.status === select;
+                    const matchVerdict = !select || test.verdict === select;
+                    const matchSeverity = !severity || String(test.severity || '').toUpperCase() === severity;
+                    const searchableText = [
+                        test.test_id,
+                        getDisplayName(test),
+                        getRiskGroup(test),
+                        test.severity || '',
+                        (test.cis_control || []).join(' '),
+                        getEvidenceOutput(test)
+                    ].join(' ').toUpperCase();
+                    const matchSearch = !search || searchableText.includes(search);
+                    
+                    return (matchStatus || matchVerdict) && matchSeverity && matchSearch;
+                });
+            }
+
+            return filtered;
+        }
+
+        function clearFilters(browser) {
+            const selectEl = document.getElementById(`${browser}-filter`);
+            const severityEl = document.getElementById(`${browser}-severity-filter`);
+            const searchEl = document.getElementById(`${browser}-search`);
+            if (selectEl) selectEl.value = '';
+            if (severityEl) severityEl.value = '';
+            if (searchEl) searchEl.value = '';
+            renderTable(browser, data[browser]?.filtered || []);
+        }
+
+        function csvEscape(value) {
+            const text = String(value ?? '').replace(/\r?\n/g, ' ').trim();
+            return `"${text.replace(/"/g, '""')}"`;
+        }
+
+        function toCsvLine(values) {
+            return values.map(csvEscape).join(',');
+        }
+
+        function getCsvTimestamp() {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        }
+
+        function exportFilteredCsv(browser) {
+            const rows = getFilteredTests(browser);
+
+            if (!Array.isArray(rows) || rows.length === 0) {
+                alert('Indirilecek satir bulunamadi. Filtreleri temizleyip tekrar deneyin.');
+                return;
+            }
+
+            const header = [
+                'Browser',
+                'TestID',
+                'TestName',
+                'Status',
+                'Verdict',
+                'Severity',
+                'RiskGroup',
+                'DecisionLayer',
+                'CISControl',
+                'PolicyKey',
+                'ReferenceURL',
+                'IntuneReference',
+                'ManageEngineReference',
+                'ExpectedValue',
+                'ObservedValue',
+                'Remediation'
+            ];
+
+            const browserName = browser === 'edge'
+                ? 'Microsoft Edge'
+                : (browser === 'chrome' ? 'Google Chrome' : 'Mozilla Firefox');
+
+            const csvLines = [toCsvLine(header)];
+
+            rows.forEach((test) => {
+                const refs = getPlatformReferences(browser, test);
+                const controls = Array.isArray(test.cis_control)
+                    ? test.cis_control
+                    : (Array.isArray(test.cis_controls) ? test.cis_controls : []);
+                const cisControl = controls.join(';');
+
+                csvLines.push(toCsvLine([
+                    browserName,
+                    test.test_id || '',
+                    getDisplayName(test),
+                    test.status || '',
+                    test.verdict || '',
+                    test.severity || '',
+                    getRiskGroup(test),
+                    test.deciding_layer || '',
+                    cisControl,
+                    test.policy_key || '',
+                    getReferenceUrl(browser, test),
+                    refs.intune || '',
+                    refs.manageengine || '',
+                    test.expected_value || '',
+                    test.observed_value || '',
+                    test.remediation || ''
+                ]));
+            });
+
+            const csvContent = `\uFEFF${csvLines.join('\r\n')}`;
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${browser}_dashboard_export_${getCsvTimestamp()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Load on start
+        setViewMode('advanced');
+        loadData();
+    </script>
+</body>
+</html>
+
+

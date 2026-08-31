@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Security - Compliance Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.22) 0%, transparent 35%),
+                radial-gradient(circle at 90% 0%, rgba(20, 184, 166, 0.18) 0%, transparent 34%),
+                linear-gradient(145deg, #0b1324 0%, #10213f 58%, #16325d 100%);
+            color: #1b2f49;
+            min-height: 100vh;
+            padding: 34px 20px;
+        }
+
+        .container {
+            max-width: 1340px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 34px;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 16px 34px rgba(9, 24, 46, 0.22);
+        }
+
+        .header h1 {
+            color: #0f2c4a;
+            font-size: 40px;
+            margin-bottom: 10px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            color: #486180;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 12px 24px rgba(9, 24, 46, 0.16);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #d6e3f1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 34px rgba(11, 37, 67, 0.2);
+            border-color: #82cfe2;
+        }
+
+        .stat-card.edge {
+            border-top: 5px solid #0e7490;
+        }
+
+        .stat-card.edge:hover {
+            background: linear-gradient(135deg, #ecfbff 0%, #ffffff 100%);
+        }
+
+        .stat-card.chrome {
+            border-top: 5px solid #0284c7;
+        }
+
+        .stat-card.chrome:hover {
+            background: linear-gradient(135deg, #edf8ff 0%, #ffffff 100%);
+        }
+
+        .stat-card.firefox {
+            border-top: 5px solid #0891b2;
+        }
+
+        .stat-card.firefox:hover {
+            background: linear-gradient(135deg, #ecfbff 0%, #ffffff 100%);
+        }
+
+        .browser-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 14px auto;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: #f6fbff;
+            border: 1px solid #cfe2f3;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .browser-mark {
+            color: #12314f;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .stat-card h2 {
+            color: #12314f;
+            margin-bottom: 16px;
+            font-size: 24px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e4edf7;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #5d748f;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #153654;
+        }
+
+        .stat-value.pass {
+            color: #059669;
+        }
+
+        .stat-value.fail {
+            color: #dc2626;
+        }
+
+        .stat-value.score {
+            font-size: 28px;
+            color: #0e7490;
+        }
+
+        .score-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0ebf7;
+            border-radius: 4px;
+            margin: 12px 0;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5b7, #34d399);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .cta-button {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 10px 20px;
+            background: linear-gradient(150deg, #0e7490 0%, #0b5f75 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            box-shadow: 0 8px 14px rgba(14, 116, 144, 0.22);
+        }
+
+        .cta-button:hover {
+            background: linear-gradient(150deg, #0b677f 0%, #0a5366 100%);
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(235, 248, 255, 0.86);
+            font-size: 12px;
+            margin-top: 12px;
+            background: rgba(10, 29, 57, 0.45);
+            border: 1px solid rgba(157, 199, 232, 0.25);
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .footer p {
+            margin: 4px 0;
+        }
+
+        .footer .timestamp {
+            color: rgba(201, 229, 251, 0.8);
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 32px;
+            }
+
+            body {
+                padding: 16px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Browser Security Dashboard</h1>
+            <p>Integrated Compliance Report - Click a browser card to open its report view</p>
+        </div>
+
+        <div class="stats-grid">
+            <!-- EDGE CARD -->
+            <div class="stat-card edge" onclick="goToReport('edge')">
+                <div class="browser-icon">
+                    <span class="browser-mark" aria-label="Edge report">ED</span>
+                </div>
+                <h2>Microsoft Edge</h2>
+                
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Tests</div>
+                        <div class="stat-value" id="edge-total">53</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">PASS</div>
+                        <div class="stat-value pass" id="edge-pass">6</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">FAIL</div>
+                        <div class="stat-value fail" id="edge-fail">40</div>
+                    </div>
+                </div>
+
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Compliance Score</div>
+                        <div class="stat-value score" id="edge-score">13%</div>
+                    </div>
+                </div>
+
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="edge-bar" style="width: 13%"></div>
+                </div>
+
+                <button class="cta-button">Open Report →</button>
+            </div>
+
+            <!-- CHROME CARD -->
+            <div class="stat-card chrome" onclick="goToReport('chrome')">
+                <div class="browser-icon">
+                    <span class="browser-mark" aria-label="Chrome report">CH</span>
+                </div>
+                <h2>Google Chrome</h2>
+                
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Tests</div>
+                        <div class="stat-value" id="chrome-total">100</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">PASS</div>
+                        <div class="stat-value pass" id="chrome-pass">12</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">FAIL</div>
+                        <div class="stat-value fail" id="chrome-fail">85</div>
+                    </div>
+                </div>
+
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Compliance Score</div>
+                        <div class="stat-value score" id="chrome-score">12.4%</div>
+                    </div>
+                </div>
+
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="chrome-bar" style="width: 12.4%"></div>
+                </div>
+
+                <button class="cta-button">Open Report →</button>
+            </div>
+
+            <!-- FIREFOX CARD -->
+            <div class="stat-card firefox" onclick="goToReport('firefox')">
+                <div class="browser-icon">
+                    <span class="browser-mark" aria-label="Firefox report">FF</span>
+                </div>
+                <h2>Mozilla Firefox</h2>
+                
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Tests</div>
+                        <div class="stat-value" id="firefox-total">76</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">PASS</div>
+                        <div class="stat-value pass" id="firefox-pass">2</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">FAIL</div>
+                        <div class="stat-value fail" id="firefox-fail">70</div>
+                    </div>
+                </div>
+
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Compliance Score</div>
+                        <div class="stat-value score" id="firefox-score">2.8%</div>
+                    </div>
+                </div>
+
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="firefox-bar" style="width: 2.8%"></div>
+                </div>
+
+                <button class="cta-button">Open Report →</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Note:</strong> Clicking a browser card opens the Integrated Compliance Report</p>
+            <p class="timestamp" id="timestamp"></p>
+        </div>
+    </div>
+
+    <script>
+        // Load actual data from verified JSON files
+        async function loadDashboardData() {
+            const browsers = ['edge', 'chrome', 'firefox'];
+            
+            for (const browser of browsers) {
+                try {
+                    const verFile = `${browser}_verified.json`;
+                    const response = await fetch(verFile);
+                    const data = await response.json();
+
+                    if (data && data.verification_summary) {
+                        const summary = data.verification_summary;
+                        const score = Math.round(summary.compliance_score_percent || 0);
+                        
+                        document.getElementById(`${browser}-total`).textContent = summary.total_tests || 0;
+                        document.getElementById(`${browser}-pass`).textContent = summary.pass || 0;
+                        document.getElementById(`${browser}-fail`).textContent = summary.fail || 0;
+                        document.getElementById(`${browser}-score`).textContent = score + '%';
+                        document.getElementById(`${browser}-bar`).style.width = score + '%';
+                    }
+                } catch (error) {
+                    console.warn(`Could not load ${browser} data:`, error);
+                }
+            }
+        }
+
+        function goToReport(browser) {
+            // Open integrated_report.html with hash to auto-select tab
+            window.location.href = `integrated_report.html#${browser}`;
+        }
+
+        // Set timestamp
+        const now = new Date();
+        const dateStr = now.toLocaleString('en-US');
+        document.getElementById('timestamp').textContent = `Last updated: ${dateStr}`;
+
+        // Load data on page load
+        window.addEventListener('load', loadDashboardData);
+    </script>
+</body>
+</html>

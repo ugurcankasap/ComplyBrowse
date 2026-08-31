@@ -1,0 +1,399 @@
+# Browser Security Test Configuration
+# Tarayıcı Güvenlik Testi Konfigürasyonu
+# ⚠️ Customize these values for your organization
+
+general:
+  organization: "Your Organization Name"  # CUSTOMIZE: Replace with your organization name
+  test_date: "2026-06-29"  # CUSTOMIZE: Update to current test date when running
+  environment: "Production"
+  tester_name: "Security Team"
+  test_language: "tr"  # Turkish
+
+implementation_scope:
+  active_packages: 10
+  active_risk_domains: 9
+  roadmap_domains: 0
+  note: "PKG-1 ile PKG-10 aktif; risk alanlarının tamamı uygulamada karşılık buluyor."
+
+package_order:
+  - package_1
+  - package_2
+  - package_3
+  - package_4
+  - package_5
+  - package_6
+  - package_7
+  - package_8
+  - package_9
+  - package_10
+
+# Risk Domains / Risk Alanları
+risk_domains:
+  - id: "1"
+    name: "Policy Hardening"
+    weight: "high"
+    tests: 5
+    status: "active"
+    
+  - id: "2"
+    name: "Data Exfiltration"
+    weight: "critical"
+    tests: 5
+    status: "active"
+    
+  - id: "3"
+    name: "Shadow AI & SaaS Visibility"
+    weight: "high"
+    tests: 4
+    status: "active"
+    
+  - id: "4"
+    name: "Extension Threats"
+    weight: "high"
+    tests: 5
+    status: "active"
+    
+  - id: "5"
+    name: "Identity & Session Security"
+    weight: "high"
+    tests: 5
+    status: "active"
+    
+  - id: "6"
+    name: "Certificate/Proxy Inspection"
+    weight: "medium"
+    tests: 8
+    status: "active"
+    
+  - id: "7"
+    name: "Patch & Version Hygiene"
+    weight: "medium"
+    tests: 3
+    status: "active"
+    
+  - id: "8"
+    name: "Forensic & Audit Deficiency"
+    weight: "high"
+    tests: 4
+    status: "active"
+    
+  - id: "9"
+    name: "Compliance & Data Sovereignty"
+    weight: "critical"
+    tests: 3
+    status: "active"
+
+# Test Packages / Test Paketleri
+test_packages:
+  
+  package_1:
+    name: "Policy Hardening"
+    id: "PKG-1"
+    description: "Policy uygulanmasının test edilmesi"
+    tests:
+      - test_id: "P1-001"
+        title: "InPrivate Mode Açabilirlik"
+        description: "Kullanıcı InPrivate mod açabiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P1-002"
+        title: "Extension Kurulumu"
+        description: "Kullanıcı kendi extension'ını yükleyebiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P1-003"
+        title: "Password Manager Kontrolü"
+        description: "Şifre kaydetme özelliği enforced mi?"
+        severity: "medium"
+        
+      - test_id: "P1-004"
+        title: "Developer Tools Kısıtı"
+        description: "DevTools kapanıyor mu?"
+        severity: "medium"
+        
+      - test_id: "P1-005"
+        title: "Download Policy Uygulanması"
+        description: "İndirme kısıtlamaları enforced mi?"
+        severity: "high"
+
+  package_2:
+    name: "Data Exfiltration"
+    id: "PKG-2"
+    description: "Veri sızıntısı riski testi"
+    tests:
+      - test_id: "P2-001"
+        title: "Kurumsal Dosya → Kişisel Mail"
+        description: "Kurumsal dosya kişisel e-postaya yüklenebiliyor mu?"
+        severity: "critical"
+        
+      - test_id: "P2-002"
+        title: "Kurumsal Dosya → Public AI Tool"
+        description: "ChatGPT, Gemini vb. araçlara dosya yükleme mümkün mü?"
+        severity: "critical"
+        
+      - test_id: "P2-003"
+        title: "Copy/Paste → LLM Prompt"
+        description: "Hassas veri kopyala-yapıştır ile LLM'e aktarılabiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P2-004"
+        title: "Browser Sync Kontrolleri"
+        description: "Şifre/bookmark/history kişisel hesaba senkronize ediliyor mu?"
+        severity: "critical"
+        
+      - test_id: "P2-005"
+        title: "Download/Upload Bypass"
+        description: "Download/upload kısıtlamaları by-pass edilebiliyor mu?"
+        severity: "high"
+
+  package_3:
+    name: "Identity & Session Security"
+    id: "PKG-3"
+    description: "Kimlik ve oturum güvenliği"
+    tests:
+      - test_id: "P3-001"
+        title: "Unmanaged Browser M365 Erişim"
+        description: "Yönetilmeyen tarayıcıda M365 erişiminde ek kısıt var mı?"
+        severity: "high"
+        
+      - test_id: "P3-002"
+        title: "Conditional Access Davranışı"
+        description: "Conditional Access politikaları çalışıyor mu?"
+        severity: "high"
+        
+      - test_id: "P3-003"
+        title: "Session Persistence"
+        description: "Logout sonrası cookie/session kalıyor mu?"
+        severity: "medium"
+        
+      - test_id: "P3-004"
+        title: "Token Güvenliği"
+        description: "Token'lar güvenli şekilde saklanıyor mu?"
+        severity: "high"
+        
+      - test_id: "P3-005"
+        title: "Work/Personal Profile Ayrımı"
+        description: "İş ve kişisel profil gerçekten ayrılmış mı?"
+        severity: "high"
+
+  package_4:
+    name: "Extension Security"
+    id: "PKG-4"
+    description: "Extension tabanlı tehditler"
+    tests:
+      - test_id: "P4-001"
+        title: "Store Extension Kurulumu"
+        description: "Microsoft Store'dan herhangi bir extension kurulabiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P4-002"
+        title: "Unpacked Extension Yükleme"
+        description: "Developer mode ile unpacked extension yüklenebiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P4-003"
+        title: "Extension İzinleri"
+        description: "Kullanıcı tehlikeli izinleri rahatça kabul edebiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P4-004"
+        title: "DOM Content Access"
+        description: "Extension'lar kurumsal SaaS oturumlarındaki DOM'a erişebiliyor mu?"
+        severity: "critical"
+        
+      - test_id: "P4-005"
+        title: "Cookie/Session Harvesting"
+        description: "Extension ile session cookie'ler alınabiliyor mu?"
+        severity: "critical"
+
+  package_5:
+    name: "Network & Visibility"
+    id: "PKG-5"
+    description: "Ağ ve görünürlük testleri"
+    tests:
+      - test_id: "P5-001"
+        title: "Proxy Bypass"
+        description: "Proxy zorunluluğu var mı, kullanıcı bypass edebiliyor mu?"
+        severity: "high"
+        
+      - test_id: "P5-002"
+        title: "DoH/DNS Değişikliği"
+        description: "Custom DNS/DoH açılabiliyor mu?"
+        severity: "medium"
+        
+      - test_id: "P5-003"
+        title: "SSL Inspection Kontrol"
+        description: "SSL inspection zinciri çalışıyor mu?"
+        severity: "high"
+        
+      - test_id: "P5-004"
+        title: "CASB/SSE Görünürlüğü"
+        description: "Upload event'leri CASB/SSE tarafında görülebiliyor mu?"
+        severity: "high"
+
+      - test_id: "P5-005"
+        title: "TLS Minimum Versiyon Zorlaması"
+        description: "TLS minimum versiyon değeri kurumsal baseline ile uyumlu mu?"
+        severity: "high"
+
+      - test_id: "P5-006"
+        title: "QUIC Protokol Kısıtı"
+        description: "QUIC/HTTP3 protokolü kurum standardına göre sınırlandırılmış mı?"
+        severity: "medium"
+
+      - test_id: "P5-007"
+        title: "Insecure Content İstisna Kontrolü"
+        description: "Insecure content allowlist istisnaları tanımlı mı?"
+        severity: "high"
+
+      - test_id: "P5-008"
+        title: "Certificate Transparency İstisnaları"
+        description: "Certificate Transparency bypass listeleri boş ve kontrollü mü?"
+        severity: "high"
+
+  package_6:
+    name: "Shadow AI & SaaS Visibility"
+    id: "PKG-6"
+    description: "Shadow AI ve kontrolsüz SaaS kullanımını test eder"
+    tests:
+      - test_id: "P6-001"
+        title: "Public AI Tool Dosya Yükleme"
+        description: "Kurumsal dosya public AI araçlarına yüklenebiliyor mu?"
+        severity: "critical"
+
+      - test_id: "P6-002"
+        title: "Prompt / Clipboard Sızıntısı"
+        description: "Hassas metin kopyala-yapıştır ile AI prompt alanına taşınabiliyor mu?"
+        severity: "high"
+
+      - test_id: "P6-003"
+        title: "Shadow SaaS Kullanımı"
+        description: "Yetkisiz SaaS uygulamaları görünür mü ve sınıflandırılıyor mu?"
+        severity: "high"
+
+      - test_id: "P6-004"
+        title: "Cloud Discovery Görünürlüğü"
+        description: "Cloud discovery login ve upload event'lerini kapsıyor mu?"
+        severity: "medium"
+
+  package_7:
+    name: "Certificate/Proxy/Inspection Bypass"
+    id: "PKG-7"
+    description: "Proxy, DNS/DoH ve sertifika inceleme katmanını test eder"
+    tests:
+      - test_id: "P7-001"
+        title: "Proxy Bypass Denemesi"
+        description: "Kullanıcı proxy ayarlarını değiştirebiliyor mu?"
+        severity: "high"
+
+      - test_id: "P7-002"
+        title: "DoH / DNS Değişikliği"
+        description: "Custom DNS ve DoH sağlayıcısı değiştirilebiliyor mu?"
+        severity: "medium"
+
+      - test_id: "P7-003"
+        title: "SSL Inspection Zinciri"
+        description: "Kurumsal CA zinciri ve SSL inspection aktif mi?"
+        severity: "high"
+
+      - test_id: "P7-004"
+        title: "Certificate Pinning Atlatma"
+        description: "Pinned endpoint'lerde inspection bypass girişimi tespit ediliyor mu?"
+        severity: "high"
+
+  package_8:
+    name: "Patch & Version Hygiene"
+    id: "PKG-8"
+    description: "Tarayıcı ve bileşen güncelliğini test eder"
+    tests:
+      - test_id: "P8-001"
+        title: "Tarayıcı Sürüm Güncelliği"
+        description: "Tarayıcı sürümü vendor baseline ile uyumlu mu?"
+        severity: "medium"
+
+      - test_id: "P8-002"
+        title: "Auto-Update Politikası"
+        description: "Otomatik güncelleme ve restart politikası enforced mi?"
+        severity: "medium"
+
+      - test_id: "P8-003"
+        title: "Component / Extension Sürüm Hijyeni"
+        description: "Component ve extension sürümleri drift gösteriyor mu?"
+        severity: "medium"
+
+  package_9:
+    name: "Forensic & Audit Deficiency"
+    id: "PKG-9"
+    description: "Log, audit ve evidence saklama durumunu test eder"
+    tests:
+      - test_id: "P9-001"
+        title: "Log Retention Süresi"
+        description: "Browser ve security logları yeterli süre tutuluyor mu?"
+        severity: "high"
+
+      - test_id: "P9-002"
+        title: "Audit Trail Bütünlüğü"
+        description: "Güvenlik olayları audit trail içinde eksiksiz mi?"
+        severity: "medium"
+
+      - test_id: "P9-003"
+        title: "Evidence Retention"
+        description: "Screenshot, log ve pcap kanıtları saklanıyor mu?"
+        severity: "high"
+
+      - test_id: "P9-004"
+        title: "Incident Reconstruction Yeteneği"
+        description: "Olayı yeniden kurmak için yeterli veri var mı?"
+        severity: "high"
+
+  package_10:
+    name: "Compliance & Data Sovereignty"
+    id: "PKG-10"
+    description: "Veri yerleşimi ve uyum kontrollerini test eder"
+    tests:
+      - test_id: "P10-001"
+        title: "Data Residency Enforcements"
+        description: "Veri, zorunlu bölge dışına çıkabiliyor mu?"
+        severity: "critical"
+
+      - test_id: "P10-002"
+        title: "Cross-Border Upload Kontrolü"
+        description: "Hassas dosyalar ülke dışı SaaS servislerine taşınabiliyor mu?"
+        severity: "critical"
+
+      - test_id: "P10-003"
+        title: "Uyum Politikası Hizalaması"
+        description: "Browser politikaları KVKK / ISO 27001 gereksinimlerine hizalı mı?"
+        severity: "medium"
+
+# Browsers to Test / Test Edilecek Tarayıcılar
+browsers:
+  - name: "Microsoft Edge (Unmanaged)"
+    key: "edge_unmanaged"
+    version: "latest"
+    profile: "personal"
+    
+  - name: "Microsoft Edge (Managed Profile)"
+    key: "edge_managed"
+    version: "latest"
+    profile: "work"
+    
+  - name: "Microsoft Edge (Compliance Mode)"
+    key: "edge_compliant"
+    version: "latest"
+    profile: "compliance"
+
+# Test Severity Levels / Test Ciddiyet Seviyeleri
+severity_levels:
+  critical: "Kritik - Derhal yapılması gereken"
+  high: "Yüksek - Kısa vadede çözülmesi gereken"
+  medium: "Orta - Planlanması gereken"
+  low: "Düşük - Takip edilmesi gereken"
+
+# Report Format / Rapor Formatı
+report:
+  format: "html"  # html, pdf, json, markdown
+  include_screenshots: true
+  include_logs: true
+  include_remediation: true
+  timestamp: true

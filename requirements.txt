@@ -1,0 +1,4 @@
+# Python 3.8+ required for all features
+# External dependency used by the test coverage gate.
+coverage>=7.6,<8
+

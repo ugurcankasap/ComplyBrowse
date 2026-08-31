@@ -1,0 +1,454 @@
+﻿[
+    {
+        "control_id":  "1.1.1",
+        "policy_key":  "CrossOriginAuthPrompt",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.2.1",
+        "policy_key":  "SafeBrowsingAllowlistDomains",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.2.2",
+        "policy_key":  "SafeBrowsingProtectionLevel",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.3",
+        "policy_key":  "EnableMediaRouter",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.4",
+        "policy_key":  "BrowserNetworkTimeQueriesEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.5",
+        "policy_key":  "AudioSandboxEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.6",
+        "policy_key":  "PromptForDownloadLocation",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.7",
+        "policy_key":  "BackgroundModeEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.9",
+        "policy_key":  "ChromeVariations",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.10",
+        "policy_key":  "CertificateTransparencyEnforcementDisabledForCas",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.11",
+        "policy_key":  "CertificateTransparencyEnforcementDisabledForLegacyCas",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.12",
+        "policy_key":  "CertificateTransparencyEnforcementDisabledForUrls",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.13",
+        "policy_key":  "SavingBrowserHistoryDisabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.14",
+        "policy_key":  "DnsInterceptionChecksEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.15",
+        "policy_key":  "ComponentUpdatesEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.16",
+        "policy_key":  "GloballyScopeHTTPAuthCacheEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.17",
+        "policy_key":  "EnableOnlineRevocationChecks",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.18",
+        "policy_key":  "CommandLineFlagSecurityWarningsEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.19",
+        "policy_key":  "ThirdPartyBlockingEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.20",
+        "policy_key":  "EnterpriseHardwarePlatformAPIEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.21",
+        "policy_key":  "ForceEphemeralProfiles",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.22",
+        "policy_key":  "ImportAutofillFormData",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.23",
+        "policy_key":  "ImportHomepageFromDefaultBrowser",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.24",
+        "policy_key":  "ImportSearchEngine",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.25",
+        "policy_key":  "HSTSPolicyBypassList",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.26",
+        "policy_key":  "UnsafelyTreatInsecureOriginAsSecure",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.27",
+        "policy_key":  "LookalikeWarningAllowlistDomains",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.28",
+        "policy_key":  "SuppressUnsupportedOSWarning",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "1.29",
+        "policy_key":  "WebRtcLocalIpsAllowedUrls",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.1.1",
+        "policy_key":  "UpdatePolicyOverride",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.1.2",
+        "policy_key":  "AutoUpdateCheckPeriodMinutes",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.2.1",
+        "policy_key":  "InsecureContentAllowedForUrls",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.2.5",
+        "policy_key":  "PdfLocalFileAccessAllowedForDomains",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.3.1",
+        "policy_key":  "BlockExternalExtensions",
+        "mode":  "POLICY",
+        "equivalent_policy_keys":  [
+                                       "ExtensionSettings"
+                                   ]
+    },
+    {
+        "control_id":  "2.3.2",
+        "policy_key":  "ExtensionAllowedTypes",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.3.3",
+        "policy_key":  "ExtensionInstallBlocklist",
+        "mode":  "POLICY",
+        "equivalent_policy_keys":  [
+                                       "ExtensionSettings"
+                                   ]
+    },
+    {
+        "control_id":  "2.3.5",
+        "policy_key":  "StoragePartitioningBlockedForOrigins",
+        "mode":  "POLICY",
+        "equivalent_policy_keys":  [
+                                       "ThirdPartyStoragePartitioningBlockedForOrigins"
+                                   ]
+    },
+    {
+        "control_id":  "2.3.7",
+        "policy_key":  "ExtensionUnpublishedAvailability",
+        "mode":  "POLICY",
+        "equivalent_policy_keys":  [
+                                       "ExtensionSettings"
+                                   ]
+    },
+    {
+        "control_id":  "2.6.1",
+        "policy_key":  "PasswordManagerEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.7.1",
+        "policy_key":  "CloudPrintProxyEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.1",
+        "policy_key":  "RemoteAccessHostAllowRemoteAccessConnections",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.2",
+        "policy_key":  "RemoteAccessHostAllowUiAccessForRemoteAssistance",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.3",
+        "policy_key":  "RemoteAccessHostDomainList",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.4",
+        "policy_key":  "RemoteAccessHostRequireCurtain",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.5",
+        "policy_key":  "RemoteAccessHostFirewallTraversal",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.6",
+        "policy_key":  "RemoteAccessHostAllowClientPairing",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.8.7",
+        "policy_key":  "RemoteAccessHostAllowRelayedConnection",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.9.1",
+        "policy_key":  "PrivacySandboxFirstPartySetsEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.10.1",
+        "policy_key":  "CloudAPAuthEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.11",
+        "policy_key":  "DownloadRestrictions",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.13",
+        "policy_key":  "SafeBrowsingProceedAnywayDisabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.14",
+        "policy_key":  "SitePerProcess",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.16",
+        "policy_key":  "RelaunchNotification",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.17",
+        "policy_key":  "ProxySettings",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.19",
+        "policy_key":  "RelaunchNotificationPeriod",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.20",
+        "policy_key":  "WebAuthenticationAllowWithBrokenTlsCerts",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.21",
+        "policy_key":  "DomainReliabilityAllowed",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.22",
+        "policy_key":  "EncryptedClientHelloEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.24",
+        "policy_key":  "EnterpriseProfileCreationKeepBrowsingData",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.25",
+        "policy_key":  "FileOrDirectoryPickerWithoutGestureAllowedForOrigins",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.26",
+        "policy_key":  "SearchSidePanelEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.27",
+        "policy_key":  "HttpAllowlist",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.28",
+        "policy_key":  "HttpsUpgradesEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.29",
+        "policy_key":  "InsecureHashesInTLSHandshakesEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.30",
+        "policy_key":  "RendererAppContainerEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.31",
+        "policy_key":  "StrictMimetypeCheckForWorkerScriptsEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "2.32",
+        "policy_key":  "RemoteDebuggingAllowed",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.1.2",
+        "policy_key":  "DefaultGeolocationSetting",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.2.1",
+        "policy_key":  "EnableMediaRouter",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.3",
+        "policy_key":  "PaymentMethodQueryEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.4",
+        "policy_key":  "BlockThirdPartyCookies",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.6",
+        "policy_key":  "ChromeCleanupReportingEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.7",
+        "policy_key":  "SyncDisabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.8",
+        "policy_key":  "AlternateErrorPagesEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.9",
+        "policy_key":  "AllowDeletingBrowserHistory",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.10",
+        "policy_key":  "NetworkPredictionOptions",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.11",
+        "policy_key":  "SpellCheckServiceEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.12",
+        "policy_key":  "MetricsReportingEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.13",
+        "policy_key":  "SafeBrowsingForTrustedSourcesEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "3.16",
+        "policy_key":  "UrlKeyedAnonymizedDataCollectionEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.2.3",
+        "policy_key":  "ClipboardAllowedForUrls",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.2.4",
+        "policy_key":  "ClipboardBlockedForUrls",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.2.5",
+        "policy_key":  "DefaultClipboardSetting",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.6",
+        "policy_key":  "UserFeedbackAllowed",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.9",
+        "policy_key":  "AutofillCreditCardEnabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.10",
+        "policy_key":  "ImportSavedPasswords",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "4.11",
+        "policy_key":  "SyncTypesListDisabled",
+        "mode":  "POLICY"
+    },
+    {
+        "control_id":  "5.3",
+        "policy_key":  "DiskCacheSize",
+        "mode":  "POLICY"
+    }
+]

@@ -1,0 +1,57 @@
+NOTICES AND ATTRIBUTIONS
+
+This project contains independent code and references to third-party products and standards:
+
+1. CIS Benchmarks
+   ================
+   This project uses control identifiers as interoperability references. The bundled
+   catalog entries use independent wording and do not reproduce benchmark text,
+   rationale, remediation guidance, or licensed benchmark files.
+   
+   CIS Benchmarks are copyright (c) by the Center for Internet Security (CIS) and 
+   available under the CIS Benchmark License Agreement.
+   
+   This project is not affiliated with or endorsed by CIS.
+   
+   For licensed benchmarks and full control descriptions, see: https://www.cisecurity.org/
+   
+   Usage: Independent policy mapping and assessment references.
+   License: No CIS benchmark content is distributed by this project.
+
+2. Mozilla Firefox Preferences
+   ============================
+   Firefox preference documentation and independent security control mapping:
+   - firefox_cis_policy_map.json: Policy key mappings for Firefox
+   - firefox_security_controls.txt: Firefox security control listing
+   
+   Usage: Security assessment and policy verification.
+   License: Consult Mozilla's applicable documentation terms before reusing
+   documentation content.
+   For more information: https://www.mozilla.org/en-US/MPL/2.0/
+
+3. Microsoft Edge and Chromium Documentation
+   ==========================================
+   Edge and Chromium policy documentation:
+   - edge_cis_policy_map.json: Edge policy mappings
+   - chrome_cis_policy_map.json: Chrome policy mappings
+   - chrome_cis_controls.txt: Independent browser security test catalog
+   
+   Usage: Policy verification and compliance mapping.
+   Source: Microsoft Edge and Chromium policy documentation.
+   For more information: 
+     - https://learn.microsoft.com/en-us/deployedge/
+     - https://chromedriver.chromium.org/
+
+THIRD-PARTY PYTHON DEPENDENCIES
+================================
+
+This project uses the following Python package:
+
+- coverage (>=7.6, <8): Test coverage measurement tool
+  License: Apache License 2.0
+  Repository: https://github.com/nedbat/coveragepy
+  Purpose: Code coverage reporting for test packages
+
+All other functionality uses Python standard library only.
+
+END OF NOTICES
