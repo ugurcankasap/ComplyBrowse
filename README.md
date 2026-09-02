@@ -1,6 +1,6 @@
-﻿# Browser Security Testing Agent
+﻿# ComplyBrowse: Enterprise Browser Security Testing and Compliance Verification
 
-A comprehensive verification framework for systematically testing enterprise browser security posture across Edge, Chrome, and Firefox environments.
+ComplyBrowse is an evidence-driven browser security assessment framework for Microsoft Edge, Google Chrome, and Mozilla Firefox. It verifies browser policies, runtime behavior, identity controls, extension security, data exfiltration risks, network visibility, and compliance posture across enterprise environments.
 
 ## Overview
 
