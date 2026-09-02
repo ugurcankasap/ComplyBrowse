@@ -1907,8 +1907,7 @@ function Get-FirefoxCisTestsFromCatalog {
 
     $catalogPath = Join-Path $PSScriptRoot 'firefox_security_controls.txt'
     if (-not (Test-Path $catalogPath)) {
-        Write-Warning "Firefox control catalog not found: $catalogPath. All FF-REF-* controls are skipped; the run is incomplete."
-        return @{}
+        throw "Firefox control catalog not found: $catalogPath. The run cannot continue with incomplete control coverage."
     }
 
     $tests = @{}
@@ -1930,6 +1929,10 @@ function Get-FirefoxCisTestsFromCatalog {
             Definition = $def
             Mapping = $mapping
         }
+    }
+
+    if ($tests.Count -eq 0) {
+        throw "Firefox control catalog contains no parseable controls: $catalogPath"
     }
 
     return $tests

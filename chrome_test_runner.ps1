@@ -1909,7 +1909,9 @@ function Invoke-CisPolicyTest {
 
 function Get-CisTestsFromCatalog {
     $catalogPath = Join-Path $PSScriptRoot 'chrome_cis_controls.txt'
-    if (-not (Test-Path $catalogPath)) { return @{} }
+    if (-not (Test-Path $catalogPath)) {
+        throw "Chrome CIS control catalog not found: $catalogPath. The run cannot continue with incomplete control coverage."
+    }
 
     $tests = @{}
     $usedIds = @{}
@@ -1938,6 +1940,10 @@ function Get-CisTestsFromCatalog {
             Definition = $def
             Mapping = if ($script:CisPolicyMapIndex.ContainsKey($def.control_id)) { $script:CisPolicyMapIndex[$def.control_id] } else { @{ policy_key = ''; mode = 'MANUAL' } }
         }
+    }
+
+    if ($tests.Count -eq 0) {
+        throw "Chrome CIS control catalog contains no parseable controls: $catalogPath"
     }
 
     return $tests

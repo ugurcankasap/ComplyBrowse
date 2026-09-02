@@ -1851,8 +1851,7 @@ function Invoke-EdgeCisPolicyTest {
 function Get-EdgeCisTestsFromCatalog {
     $catalogPath = Join-Path $PSScriptRoot 'edge_cis_controls.txt'
     if (-not (Test-Path $catalogPath)) {
-        Write-Warning "Edge reference catalog not found: $catalogPath. All EDGE-REF-* controls are skipped; the run is incomplete."
-        return @{}
+        throw "Edge reference catalog not found: $catalogPath. The run cannot continue with incomplete control coverage."
     }
 
     $tests = @{}
@@ -1882,6 +1881,10 @@ function Get-EdgeCisTestsFromCatalog {
             Definition = $def
             Mapping = if ($script:EdgeCisMapIndex.ContainsKey($def.control_id)) { $script:EdgeCisMapIndex[$def.control_id] } else { @{ policy_key = ''; mode = 'MANUAL' } }
         }
+    }
+
+    if ($tests.Count -eq 0) {
+        throw "Edge reference catalog contains no parseable controls: $catalogPath"
     }
 
     return $tests

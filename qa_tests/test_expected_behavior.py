@@ -9,6 +9,12 @@ from tests.test_framework import TestResult, TestStatus, Severity
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "config.yaml"
 
+CONTROL_CATALOGS = {
+    "edge_cis_controls.txt": ("test_runner.ps1", 26, "Edge reference catalog not found"),
+    "chrome_cis_controls.txt": ("chrome_test_runner.ps1", 88, "Chrome CIS control catalog not found"),
+    "firefox_security_controls.txt": ("firefox_test_runner.ps1", 60, "Firefox control catalog not found"),
+}
+
 
 def parse_declared_test_ids(config_path: Path):
     """Parse declared test IDs under each `package_*` block from raw config text."""
@@ -70,6 +76,27 @@ class TestConfigAndPlanContracts(unittest.TestCase):
             self.assertIn("name", entry)
             self.assertIn("runner", entry)
             self.assertTrue(callable(entry["runner"]))
+
+
+class TestControlCatalogContracts(unittest.TestCase):
+    def test_control_catalogs_are_present_and_complete(self):
+        for catalog_name, (_, expected_count, _) in CONTROL_CATALOGS.items():
+            with self.subTest(catalog=catalog_name):
+                catalog_path = ROOT / catalog_name
+                self.assertTrue(catalog_path.is_file(), f"Required catalog is missing: {catalog_name}")
+                controls = [line for line in catalog_path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+                self.assertEqual(len(controls), expected_count)
+
+    def test_runners_fail_when_required_catalog_is_missing(self):
+        for catalog_name, (runner_name, _, error_fragment) in CONTROL_CATALOGS.items():
+            with self.subTest(runner=runner_name):
+                runner_source = (ROOT / runner_name).read_text(encoding="utf-8-sig")
+                missing_catalog_guard = (
+                    f"if (-not (Test-Path $catalogPath)) {{" in runner_source
+                    and f"{catalog_name}" in runner_source
+                    and f'throw "{error_fragment}:' in runner_source
+                )
+                self.assertTrue(missing_catalog_guard)
 
 
 class TestRunnerOutputContracts(unittest.TestCase):
