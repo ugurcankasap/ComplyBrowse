@@ -1936,7 +1936,7 @@ if ($TestId -eq "ALL") {
     $TestMap.Keys | Sort-Object | ForEach-Object {
         $testKey = $_
         $testConfig = $TestMap[$testKey]
-        if ($testConfig.Type -eq 'ED-CIS') {
+        if ($testConfig.Type -eq 'ED-REF') {
             $result = Invoke-EdgeCisPolicyTest -Definition $testConfig.Definition -PolicyStore $script:EdgePolicyStore -Mapping $testConfig.Mapping
         } else {
             $result = & $testConfig.Func
@@ -1992,7 +1992,7 @@ if ($TestId -eq "ALL") {
     # Spesifik test
     if ($TestMap.ContainsKey($TestId)) {
         $testConfig = $TestMap[$TestId]
-        if ($testConfig.Type -eq 'ED-CIS') {
+        if ($testConfig.Type -eq 'ED-REF') {
             $result = Invoke-EdgeCisPolicyTest -Definition $testConfig.Definition -PolicyStore $script:EdgePolicyStore -Mapping $testConfig.Mapping
         } else {
             $result = & $testConfig.Func
