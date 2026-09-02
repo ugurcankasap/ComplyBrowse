@@ -54,6 +54,15 @@ def parse_declared_test_ids(config_path: Path):
     return package_test_ids
 
 
+def extract_powershell_function(source: str, function_name: str):
+    marker = f"function {function_name} {{"
+    start = source.find(marker)
+    if start < 0:
+        raise AssertionError(f"PowerShell function not found: {function_name}")
+    end = source.find("\nfunction ", start + len(marker))
+    return source[start:] if end < 0 else source[start:end]
+
+
 class TestConfigAndPlanContracts(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -97,6 +106,43 @@ class TestControlCatalogContracts(unittest.TestCase):
                     and f'throw "{error_fragment}:' in runner_source
                 )
                 self.assertTrue(missing_catalog_guard)
+
+
+class TestEdgeRunnerEvidenceContracts(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.runner_source = (ROOT / "test_runner.ps1").read_text(encoding="utf-8-sig")
+
+    def test_observational_controls_do_not_emit_evidence_free_failures(self):
+        observational_functions = (
+            "Test-MailExfiltration",
+            "Test-AITools",
+            "Test-CopyPaste",
+            "Test-DownloadBypass",
+            "Test-M365Auth",
+            "Test-SessionHijacking",
+            "Test-TokenTheft",
+            "Test-ProfileSeparation",
+            "Test-StoreExtensions",
+            "Test-ExtensionPermissions",
+            "Test-DOMAccess",
+            "Test-CookieHarvesting",
+            "Test-DNS",
+            "Test-CASB",
+            "Test-EdgeInstalledExtensions",
+        )
+        for function_name in observational_functions:
+            with self.subTest(function=function_name):
+                function_source = extract_powershell_function(self.runner_source, function_name)
+                self.assertNotIn('status = "FAILED"', function_source)
+
+    def test_proxy_bypass_uses_policy_values_for_verdicts(self):
+        function_source = extract_powershell_function(self.runner_source, "Test-ProxyBypass")
+        self.assertIn('Get-EdgePolicyValue -KeyName "ProxyMode"', function_source)
+        self.assertIn('Get-EdgePolicyValue -KeyName "ProxyBypassList"', function_source)
+        self.assertIn('status = "PASSED"', function_source)
+        self.assertIn('status = "FAILED"', function_source)
+        self.assertIn('status = "UNKNOWN"', function_source)
 
 
 class TestRunnerOutputContracts(unittest.TestCase):

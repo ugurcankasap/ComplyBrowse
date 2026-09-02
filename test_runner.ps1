@@ -987,7 +987,7 @@ function Test-MailExfiltration {
     $outlookPath = "$env:APPDATA\Microsoft\Outlook"
     $exists = Test-Path $outlookPath
     $details = if ($exists) { "Outlook profile: EXISTS" } else { "Outlook profile: MISSING" }
-    return @{ status = "FAILED"; message = "Mail Exfiltration: RISK"; details = $details + " - Data exfiltration possible" }
+    return @{ status = "UNKNOWN"; message = "Mail Exfiltration: NOT ASSESSED"; details = $details + " - Profile presence does not prove or disprove exfiltration controls" }
 }
 
 function Test-AITools {
@@ -999,11 +999,11 @@ function Test-AITools {
     } else {
         $details = "Edge profile not found"
     }
-    return @{ status = "FAILED"; message = "AI Tools: RISK"; details = $details + " - Prompt injection possible" }
+    return @{ status = "UNKNOWN"; message = "AI Tools: NOT ASSESSED"; details = $details + " - Preference text alone does not prove AI access or DLP enforcement" }
 }
 
 function Test-CopyPaste {
-    return @{ status = "FAILED"; message = "Copy-Paste: No Control"; details = "Browser: Clipboard access unrestricted" }
+    return @{ status = "UNKNOWN"; message = "Copy-Paste: NOT ASSESSED"; details = "Clipboard enforcement requires a live browser/API test or DLP telemetry" }
 }
 
 function Test-BrowserSync {
@@ -1034,14 +1034,14 @@ function Test-BrowserSync {
 function Test-DownloadBypass {
     $dlPath = "$env:USERPROFILE\Downloads"
     $dlCount = (Get-ChildItem $dlPath -ErrorAction SilentlyContinue | Measure-Object).Count
-    return @{ status = "FAILED"; message = "Download Bypass: RISK"; details = "Downloaded files count: $dlCount - No control mechanism" }
+    return @{ status = "UNKNOWN"; message = "Download Bypass: NOT ASSESSED"; details = "Downloaded files observed: $dlCount - File count does not demonstrate a policy bypass" }
 }
 
 function Test-M365Auth {
     $cacheFile = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Cache"
     $exists = Test-Path $cacheFile
     $details = if ($exists) { "Edge cache: EXISTS" } else { "Edge cache: MISSING" }
-    return @{ status = "FAILED"; message = "M365 Auth: RISK"; details = $details + " - Token hijacking possible" }
+    return @{ status = "UNKNOWN"; message = "M365 Auth: NOT ASSESSED"; details = $details + " - Cache presence does not demonstrate token theft exposure" }
 }
 
 function Test-ConditionalAccess {
@@ -1072,7 +1072,11 @@ function Test-StoreExtensions {
         $details = "Extension folder: MISSING"
         $extCount = 0
     }
-    return @{ status = if ($extCount -gt 0) { "FAILED" } else { "PASSED" }; message = "Store Extensions: $(if ($extCount -gt 0) { 'RISK - ' + $extCount + ' items' } else { 'CLEAN' })"; details = $details }
+    if ($extCount -eq 0) {
+        return @{ status = "PASSED"; message = "Store Extensions: NONE INSTALLED"; details = $details }
+    }
+
+    return @{ status = "UNKNOWN"; message = "Store Extensions: REVIEW REQUIRED"; details = "$details - Installed extensions require allowlist and permission review" }
 }
 
 function Test-UnpackedExtensions {
@@ -1104,14 +1108,30 @@ function Test-CookieHarvesting {
 }
 
 function Test-ProxyBypass {
-    $regPath = "HKCU:\Software\Policies\Microsoft\Edge"
     try {
-        $proxyMode = (Get-ItemProperty -Path $regPath -Name "ProxyMode" -ErrorAction Stop).ProxyMode
-        $details = "ProxyMode: $proxyMode (1=off, 2=direct, 3=pac, 4=fixed, 5=auto)"
+        $modeResult = Get-EdgePolicyValue -KeyName "ProxyMode"
+        if (-not $modeResult.found) {
+            return @{ status = "UNKNOWN"; message = "Proxy Bypass: NOT ASSESSED"; details = "ProxyMode policy not found; effective system or network proxy state is unknown" }
+        }
+
+        $proxyMode = ([string]$modeResult.value).Trim().ToLowerInvariant()
+        $bypassResult = Get-EdgePolicyValue -KeyName "ProxyBypassList"
+        $bypassList = if ($bypassResult.found) { [string]$bypassResult.value } else { "" }
+        $hasGlobalBypass = $bypassList -match '(^|[;,]\s*)\*(\s*[;,]|$)'
+        $details = "ProxyMode=$proxyMode @ $($modeResult.source); ProxyBypassList=$(if ($bypassResult.found) { $bypassList } else { '<not set>' })"
+
+        if ($proxyMode -eq "direct" -or $hasGlobalBypass) {
+            return @{ status = "FAILED"; message = "Proxy Bypass: EXPLICIT BYPASS"; details = $details; expected_value = "ProxyMode must use fixed_servers or pac_script without a global wildcard bypass"; observed_value = $details; evidence_type = "registry_policy"; confidence = "HIGH" }
+        }
+
+        if ($proxyMode -in @("fixed_servers", "pac_script")) {
+            return @{ status = "PASSED"; message = "Proxy Bypass: MANAGED"; details = $details; expected_value = "ProxyMode must use fixed_servers or pac_script without a global wildcard bypass"; observed_value = $details; evidence_type = "registry_policy"; confidence = "HIGH" }
+        }
+
+        return @{ status = "UNKNOWN"; message = "Proxy Bypass: EFFECTIVE STATE UNKNOWN"; details = $details; expected_value = "ProxyMode must use fixed_servers or pac_script without a global wildcard bypass"; observed_value = $details; evidence_type = "registry_policy"; confidence = "MEDIUM" }
     } catch {
-        $details = "Proxy policy: NOT SET"
+        return @{ status = "UNKNOWN"; message = "Proxy Bypass: ERROR"; details = "Proxy policy check failed: $($_.Exception.Message)" }
     }
-    return @{ status = "FAILED"; message = "Proxy Bypass: RISK"; details = $details }
 }
 
 function Test-DNS {
@@ -1286,9 +1306,9 @@ function Test-EdgeInstalledExtensions {
         
         if ($forceInstalled.Count -gt 0) {
             return @{ 
-                status = "FAILED"
-                message = "Force Installed: RISK ($($forceInstalled.Count) detected)"
-                details = "Extensions: $($forceInstalled -join ', ') - CIS 1.5: MDM-managed extensions should be reviewed"
+                status = "UNKNOWN"
+                message = "Force Installed: REVIEW REQUIRED ($($forceInstalled.Count) detected)"
+                details = "Extensions: $($forceInstalled -join ', ') - Installation alone does not establish compliance without an approved inventory"
             }
         } else {
             return @{ 
@@ -1898,22 +1918,22 @@ $BaseTestMap = @{
     "P1-003" = @{ Name = "Password Manager"; Func = "Test-PasswordManager"; Severity = "MEDIUM"; Package = "PKG-1"; VerifiedVia = "Registry (HKCU), Preferences File"; CISControls = @("1.2") }
     "P1-004" = @{ Name = "Developer Tools"; Func = "Test-DeveloperTools"; Severity = "MEDIUM"; Package = "PKG-1"; VerifiedVia = "Registry (HKCU)"; CISControls = @(); PolicyKey = "DeveloperToolsAvailability" }
     "P1-005" = @{ Name = "Download Policy"; Func = "Test-DownloadPolicy"; Severity = "HIGH"; Package = "PKG-1"; VerifiedVia = "Registry (HKCU)"; CISControls = @(); PolicyKey = "PromptForDownloadLocation" }
-    "P2-001" = @{ Name = "Mail Exfiltration"; Func = "Test-MailExfiltration"; Severity = "CRITICAL"; Package = "PKG-2"; VerifiedVia = "Filesystem (AppData)"; CISControls = @(); IntuneReferenceUrl = "https://learn.microsoft.com/en-us/intune/app-management/protection/overview"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html" }
-    "P2-002" = @{ Name = "AI Tools"; Func = "Test-AITools"; Severity = "CRITICAL"; Package = "PKG-2"; VerifiedVia = "Preferences File"; CISControls = @(); IntuneReferenceUrl = "https://learn.microsoft.com/en-us/purview/dlp-create-policy-prevent-cloud-sharing-from-edge-biz"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/app_management/blocklisting-apps.html" }
-    "P2-003" = @{ Name = "Copy-Paste"; Func = "Test-CopyPaste"; Severity = "HIGH"; Package = "PKG-2"; VerifiedVia = "Browser API (requires DevTools)"; CISControls = @() }
+    "P2-001" = @{ Name = "Mail Exfiltration"; Func = "Test-MailExfiltration"; Severity = "CRITICAL"; Package = "PKG-2"; VerifiedVia = "Filesystem (AppData)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL"; IntuneReferenceUrl = "https://learn.microsoft.com/en-us/intune/app-management/protection/overview"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html" }
+    "P2-002" = @{ Name = "AI Tools"; Func = "Test-AITools"; Severity = "CRITICAL"; Package = "PKG-2"; VerifiedVia = "Preferences File"; CISControls = @(); PolicyMapping = "OBSERVATIONAL"; IntuneReferenceUrl = "https://learn.microsoft.com/en-us/purview/dlp-create-policy-prevent-cloud-sharing-from-edge-biz"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/app_management/blocklisting-apps.html" }
+    "P2-003" = @{ Name = "Copy-Paste"; Func = "Test-CopyPaste"; Severity = "HIGH"; Package = "PKG-2"; VerifiedVia = "Browser API (requires DevTools)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
     "P2-004" = @{ Name = "Browser Sync"; Func = "Test-BrowserSync"; Severity = "CRITICAL"; Package = "PKG-2"; VerifiedVia = "Registry (HKCU), Preferences File"; CISControls = @("1.5"); IntuneReferenceUrl = "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/profile_management/mdm_profile_management.html" }
-    "P2-005" = @{ Name = "Download Bypass"; Func = "Test-DownloadBypass"; Severity = "HIGH"; Package = "PKG-2"; VerifiedVia = "Filesystem (Downloads folder)"; CISControls = @() }
-    "P3-001" = @{ Name = "M365"; Func = "Test-M365Auth"; Severity = "HIGH"; Package = "PKG-3"; VerifiedVia = "Filesystem (Cache)"; CISControls = @() }
+    "P2-005" = @{ Name = "Download Bypass"; Func = "Test-DownloadBypass"; Severity = "HIGH"; Package = "PKG-2"; VerifiedVia = "Filesystem (Downloads folder)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
+    "P3-001" = @{ Name = "M365"; Func = "Test-M365Auth"; Severity = "HIGH"; Package = "PKG-3"; VerifiedVia = "Filesystem (Cache)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
     "P3-002" = @{ Name = "Conditional Access"; Func = "Test-ConditionalAccess"; Severity = "HIGH"; Package = "PKG-3"; VerifiedVia = "Azure AD backend (external)"; CISControls = @() }
     "P3-003" = @{ Name = "Session"; Func = "Test-SessionHijacking"; Severity = "MEDIUM"; Package = "PKG-3"; VerifiedVia = "Filesystem (Cache)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
-    "P3-004" = @{ Name = "Token"; Func = "Test-TokenTheft"; Severity = "HIGH"; Package = "PKG-3"; VerifiedVia = "Filesystem (Registry)"; CISControls = @() }
+    "P3-004" = @{ Name = "Token"; Func = "Test-TokenTheft"; Severity = "HIGH"; Package = "PKG-3"; VerifiedVia = "Runtime instrumentation (not available)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
     "P3-005" = @{ Name = "Profile"; Func = "Test-ProfileSeparation"; Severity = "HIGH"; Package = "PKG-3"; VerifiedVia = "Filesystem (User Data folder)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
-    "P4-001" = @{ Name = "Store Extensions"; Func = "Test-StoreExtensions"; Severity = "HIGH"; Package = "PKG-4"; VerifiedVia = "Filesystem (Extensions folder), DevTools (CDP)"; CISControls = @() }
+    "P4-001" = @{ Name = "Store Extensions"; Func = "Test-StoreExtensions"; Severity = "HIGH"; Package = "PKG-4"; VerifiedVia = "Filesystem (Extensions folder), DevTools (CDP)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
     "P4-002" = @{ Name = "Unpacked"; Func = "Test-UnpackedExtensions"; Severity = "HIGH"; Package = "PKG-4"; VerifiedVia = "Filesystem (Extensions folder)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
     "P4-003" = @{ Name = "Permissions"; Func = "Test-ExtensionPermissions"; Severity = "HIGH"; Package = "PKG-4"; VerifiedVia = "Registry Policy, DevTools (CDP)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL" }
     "P4-004" = @{ Name = "DOM"; Func = "Test-DOMAccess"; Severity = "CRITICAL"; Package = "PKG-4"; VerifiedVia = "DevTools (CDP - requires live browser)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL"; IntuneReferenceUrl = "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/profile_management/mdm_profile_management.html" }
     "P4-005" = @{ Name = "Cookie"; Func = "Test-CookieHarvesting"; Severity = "CRITICAL"; Package = "PKG-4"; VerifiedVia = "DevTools (CDP - requires live browser)"; CISControls = @(); PolicyMapping = "OBSERVATIONAL"; IntuneReferenceUrl = "https://learn.microsoft.com/en-us/intune/app-management/protection/overview"; ManageEngineReferenceUrl = "https://www.manageengine.com/mobile-device-management/help/security_management/mdm_security_management.html" }
-    "P5-001" = @{ Name = "Proxy"; Func = "Test-ProxyBypass"; Severity = "HIGH"; Package = "PKG-5"; VerifiedVia = "Registry (HKCU)"; CISControls = @() }
+    "P5-001" = @{ Name = "Proxy"; Func = "Test-ProxyBypass"; Severity = "HIGH"; Package = "PKG-5"; VerifiedVia = "Registry (HKCU/HKLM)"; CISControls = @(); PolicyKey = "ProxyMode" }
     "P5-002" = @{ Name = "DNS"; Func = "Test-DNS"; Severity = "MEDIUM"; Package = "PKG-5"; VerifiedVia = "Network config (external)"; CISControls = @() }
     "P5-003" = @{ Name = "SSL"; Func = "Test-SSLInspection"; Severity = "HIGH"; Package = "PKG-5"; VerifiedVia = "Proxy inspection (external)"; CISControls = @() }
     "P5-004" = @{ Name = "CASB"; Func = "Test-CASB"; Severity = "HIGH"; Package = "PKG-5"; VerifiedVia = "Cloud policy (external)"; CISControls = @() }
