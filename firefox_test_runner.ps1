@@ -1902,6 +1902,26 @@ function Invoke-FirefoxCisTest {
     return @{ status = 'FAILED'; message = "Unsupported mapping mode: $($Mapping.mode)"; details = "Control: $($Definition.control_id)"; warning_note = 'Map mode tanimsiz oldugu icin kontrol otomatik dogrulanamadi; map duzeltmesi gerekir.' }
 }
 
+function Get-ControlDisplayName {
+    param(
+        [string]$PolicyKey,
+        [hashtable]$Definition
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($PolicyKey)) {
+        $name = $PolicyKey -replace '[._-]+', ' '
+        $name = $name -creplace '([A-Z]+)([A-Z][a-z])', '$1 $2'
+        $name = $name -creplace '([a-z0-9])([A-Z])', '$1 $2'
+        return $name.Trim()
+    }
+
+    $name = ([string]$Definition.raw_line) -replace '^\S+\s+', ''
+    $name = $name -replace '^\(L\d+\)\s+', ''
+    $name = $name -replace '(?i)^Ensure\s+', ''
+    $name = $name -replace "(?i)\s+is set to\s+'[^']+'\s*$", ''
+    return $name.Trim()
+}
+
 function Get-FirefoxCisTestsFromCatalog {
     param([hashtable]$CisMap)
 
@@ -1920,7 +1940,7 @@ function Get-FirefoxCisTestsFromCatalog {
         $mapping = if ($CisMap.ContainsKey($def.control_id)) { $CisMap[$def.control_id] } else { @{ mode = 'MANUAL'; key = ''; expectation = '' } }
 
         $tests[$testId] = @{
-            Name = "Reference control $($def.control_id) - $($def.title)"
+            Name = Get-ControlDisplayName -PolicyKey ([string]$mapping.key) -Definition $def
             Severity = Get-FirefoxCisSeverity -Definition $def
             Package = 'FF-REF'
             VerifiedVia = 'Firefox policy/prefs strict map'

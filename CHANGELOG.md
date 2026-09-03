@@ -8,6 +8,9 @@ All notable changes to this project are documented in this file.
 - Added a Mermaid architecture diagram for the L1-L3 evidence precedence and L4 provenance flow.
 - Added an end-to-end control contribution guide covering catalogs, policy maps, runners, verification semantics, and validation gates.
 
+### Changed
+- Reference-catalog result names now show only the control title; CIS identifiers remain in the dedicated reference-control field.
+
 ## [v1.0.1] - 2026-09-03
 
 ### Reliability

@@ -107,6 +107,21 @@ class TestControlCatalogContracts(unittest.TestCase):
                 )
                 self.assertTrue(missing_catalog_guard)
 
+    def test_catalog_names_exclude_reference_prefix_and_control_id(self):
+        catalog_functions = (
+            ("test_runner.ps1", "Get-EdgeCisTestsFromCatalog"),
+            ("chrome_test_runner.ps1", "Get-CisTestsFromCatalog"),
+            ("firefox_test_runner.ps1", "Get-FirefoxCisTestsFromCatalog"),
+        )
+        for runner_name, function_name in catalog_functions:
+            with self.subTest(runner=runner_name):
+                runner_source = (ROOT / runner_name).read_text(encoding="utf-8-sig")
+                function_source = extract_powershell_function(runner_source, function_name)
+                self.assertIn("Name = Get-ControlDisplayName", function_source)
+                self.assertNotIn('Name = "Reference control', function_source)
+                self.assertNotIn('Name = "CIS $($def.control_id)', function_source)
+                self.assertIn("CISControls = @($def.control_id)", function_source)
+
 
 class TestCommunityHealthContracts(unittest.TestCase):
     REQUIRED_FILES = (

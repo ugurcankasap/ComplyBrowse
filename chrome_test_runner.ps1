@@ -1907,6 +1907,26 @@ function Invoke-CisPolicyTest {
     }
 }
 
+function Get-ControlDisplayName {
+    param(
+        [string]$PolicyKey,
+        [hashtable]$Definition
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($PolicyKey)) {
+        $name = $PolicyKey -replace '[._-]+', ' '
+        $name = $name -creplace '([A-Z]+)([A-Z][a-z])', '$1 $2'
+        $name = $name -creplace '([a-z0-9])([A-Z])', '$1 $2'
+        return $name.Trim()
+    }
+
+    $name = ([string]$Definition.raw_line) -replace '^\S+\s+', ''
+    $name = $name -replace '^\(L\d+\)\s+', ''
+    $name = $name -replace '(?i)^Ensure\s+', ''
+    $name = $name -replace "(?i)\s+is set to\s+'[^']+'\s*$", ''
+    return $name.Trim()
+}
+
 function Get-CisTestsFromCatalog {
     $catalogPath = Join-Path $PSScriptRoot 'chrome_cis_controls.txt'
     if (-not (Test-Path $catalogPath)) {
@@ -1929,16 +1949,17 @@ function Get-CisTestsFromCatalog {
             $idx++
         }
         $usedIds[$id] = $true
+        $mapping = if ($script:CisPolicyMapIndex.ContainsKey($def.control_id)) { $script:CisPolicyMapIndex[$def.control_id] } else { @{ policy_key = ''; mode = 'MANUAL' } }
 
         $tests[$id] = @{
-            Name = "CIS $($def.control_id) - $($def.title)"
+            Name = Get-ControlDisplayName -PolicyKey ([string]$mapping.policy_key) -Definition $def
             Severity = Get-CisSeverity -Definition $def
             Package = 'CH-CIS'
             VerifiedVia = 'Registry Policy Strict Map (HKCU/HKLM)'
             CISControls = @($def.control_id)
             Type = 'CIS'
             Definition = $def
-            Mapping = if ($script:CisPolicyMapIndex.ContainsKey($def.control_id)) { $script:CisPolicyMapIndex[$def.control_id] } else { @{ policy_key = ''; mode = 'MANUAL' } }
+            Mapping = $mapping
         }
     }
 
