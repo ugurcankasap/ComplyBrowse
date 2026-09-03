@@ -108,6 +108,62 @@ class TestControlCatalogContracts(unittest.TestCase):
                 self.assertTrue(missing_catalog_guard)
 
 
+class TestCommunityHealthContracts(unittest.TestCase):
+    REQUIRED_FILES = (
+        ".github/CODEOWNERS",
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/ISSUE_TEMPLATE/config.yml",
+        ".github/pull_request_template.md",
+        ".github/workflows/release.yml",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+    )
+
+    def test_required_community_files_exist(self):
+        for relative_path in self.REQUIRED_FILES:
+            with self.subTest(path=relative_path):
+                self.assertTrue((ROOT / relative_path).is_file())
+
+    def test_issue_forms_have_required_fields_and_unique_ids(self):
+        for form_name in ("bug_report.yml", "feature_request.yml"):
+            with self.subTest(form=form_name):
+                content = (ROOT / ".github" / "ISSUE_TEMPLATE" / form_name).read_text(encoding="utf-8")
+                self.assertIn("name:", content)
+                self.assertIn("description:", content)
+                self.assertIn("title:", content)
+                self.assertIn("body:", content)
+                self.assertNotIn("\t", content)
+                field_ids = [
+                    line.split(":", 1)[1].strip()
+                    for line in content.splitlines()
+                    if line.strip().startswith("id:")
+                ]
+                self.assertTrue(field_ids)
+                self.assertEqual(len(field_ids), len(set(field_ids)))
+
+    def test_security_reports_are_routed_to_policy(self):
+        config = (ROOT / ".github" / "ISSUE_TEMPLATE" / "config.yml").read_text(encoding="utf-8")
+        self.assertIn("blank_issues_enabled: false", config)
+        self.assertIn("/security/policy", config)
+
+    def test_readme_exposes_repository_status(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8-sig")
+        self.assertIn("actions/workflows/ci.yml/badge.svg", readme)
+        self.assertIn("license-MIT", readme)
+        version = (ROOT / "VERSION").read_text(encoding="utf-8-sig").strip()
+        self.assertIn(f"version-v{version}", readme)
+        self.assertTrue((ROOT / "releases" / f"v{version}.md").is_file())
+
+    def test_release_workflow_uses_versioned_notes(self):
+        workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        self.assertIn('"v*.*.*"', workflow)
+        self.assertIn("contents: write", workflow)
+        self.assertIn("gh release create", workflow)
+        self.assertIn('releases/$GITHUB_REF_NAME.md', workflow)
+
+
 class TestEdgeRunnerEvidenceContracts(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

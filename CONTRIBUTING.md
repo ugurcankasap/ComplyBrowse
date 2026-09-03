@@ -1,4 +1,4 @@
-# Contributing to Browser Security
+# Contributing to ComplyBrowse
 
 Thank you for your interest in contributing to this project.
 
@@ -9,6 +9,16 @@ Thank you for your interest in contributing to this project.
 3. **Project Scope** — This is a browser security verification framework, not a general browser tool.
 
 ## Contribution Guidelines
+
+### Development Workflow
+
+1. Open or choose an issue before starting a substantial change.
+2. Create a branch from the latest `main` branch, for example `fix/edge-proxy-evidence` or `feature/sarif-export`.
+3. Keep each pull request focused on one problem.
+4. Run the relevant focused checks, then the full QA contract suite.
+5. Open a pull request and complete the repository checklist.
+
+Direct pushes to `main` should be limited to repository administration. Code changes should normally be reviewed through pull requests.
 
 ### Code Changes
 

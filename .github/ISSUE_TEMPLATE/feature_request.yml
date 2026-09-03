@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a measurable browser-security or compliance capability.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Explain the security or compliance decision this feature should support.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      multiple: true
+      options:
+        - Microsoft Edge
+        - Google Chrome
+        - Mozilla Firefox
+        - Verification engine
+        - Reports and exports
+        - CI and quality gates
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe expected inputs, evidence, verdict behavior, and output.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and false-positive handling
+      description: Explain what can be measured and when the result should be NOT_ASSESSED.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: The request does not require publishing proprietary benchmark content or sensitive endpoint evidence.
+          required: true
+        - label: I searched existing issues for a similar request.
+          required: true

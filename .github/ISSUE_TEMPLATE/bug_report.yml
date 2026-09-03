@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible defect in ComplyBrowse.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, browser history, policy secrets, or unsanitized reports. Security vulnerabilities must follow SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: ComplyBrowse version or commit
+      placeholder: v1.0.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser scope
+      options:
+        - Microsoft Edge
+        - Google Chrome
+        - Mozilla Firefox
+        - Multiple browsers
+        - Framework or reporting layer
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, PowerShell version, Python version, and management channel when relevant.
+      placeholder: Windows 11, PowerShell 5.1, Python 3.11, Intune managed
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: Describe the smallest sequence that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Paste only sanitized output. Remove usernames, paths, tenant data, policy values, tokens, and browsing data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I reproduced this on the latest main branch or release.
+          required: true
+        - label: I removed sensitive endpoint and organization data.
+          required: true
+        - label: This is not a security vulnerability requiring private disclosure.
+          required: true

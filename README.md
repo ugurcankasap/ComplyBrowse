@@ -1,5 +1,11 @@
 ﻿# ComplyBrowse: Enterprise Browser Security Testing and Compliance Verification
 
+[![CI](https://github.com/ugurcankasap/ComplyBrowse/actions/workflows/ci.yml/badge.svg)](https://github.com/ugurcankasap/ComplyBrowse/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-v1.0.1-blue)](VERSION)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-3776AB)](requirements.txt)
+[![PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE)](README.md#requirements)
+
 ComplyBrowse is an evidence-driven browser security assessment framework for Microsoft Edge, Google Chrome, and Mozilla Firefox. It verifies browser policies, runtime behavior, identity controls, extension security, data exfiltration risks, network visibility, and compliance posture across enterprise environments.
 
 ## Overview

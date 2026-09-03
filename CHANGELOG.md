@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v1.0.1] - 2026-09-03
+
+### Reliability
+- Browser control catalogs now fail fast when missing or unparseable instead of silently reducing test coverage.
+- Catalog contracts enforce the published Edge (26), Chrome (88), and Firefox (60) reference-control counts.
+- Edge observational checks no longer emit FAIL from file presence, inventory counts, or other non-conclusive signals.
+- Edge proxy bypass evaluation now compares `ProxyMode` and `ProxyBypassList` policy values.
+
+### Community
+- Added structured bug and feature request forms with private security-report routing.
+- Added pull request checklist, CODEOWNERS, and contributor conduct policy.
+- Added repository status badges and automated community-health contracts.
+
 ## [v1.0.0] - 2026-08-20
 
 ### Overview

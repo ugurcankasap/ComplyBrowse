@@ -1,0 +1,10 @@
+# Default review ownership
+* @ugurcankasap
+
+# Security-sensitive verification and automation paths
+/.github/workflows/ @ugurcankasap
+/*_test_runner.ps1 @ugurcankasap
+/apply_verification.ps1 @ugurcankasap
+/verify_value_based.ps1 @ugurcankasap
+/management_channel.ps1 @ugurcankasap
+/qa_tests/ @ugurcankasap
