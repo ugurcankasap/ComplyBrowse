@@ -163,6 +163,19 @@ class TestCommunityHealthContracts(unittest.TestCase):
         self.assertIn("gh release create", workflow)
         self.assertIn('releases/$GITHUB_REF_NAME.md', workflow)
 
+    def test_architecture_and_control_contribution_docs_exist(self):
+        methodology = (ROOT / "VERIFICATION_METHODOLOGY.md").read_text(encoding="utf-8-sig")
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8-sig")
+        self.assertIn("```mermaid", methodology)
+        self.assertIn("L1 managed value comparison", methodology)
+        self.assertIn("L2 user value comparison", methodology)
+        self.assertIn("L3 runtime arbiter", methodology)
+        self.assertIn("### Adding a Control", contributing)
+        self.assertIn("Reference catalog", contributing)
+        self.assertIn("Runner-native", contributing)
+        self.assertIn("control_semantics.json", contributing)
+        self.assertIn("audit_result_integrity.ps1", contributing)
+
 
 class TestEdgeRunnerEvidenceContracts(unittest.TestCase):
     @classmethod

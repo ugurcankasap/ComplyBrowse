@@ -101,13 +101,58 @@ conclusive value comparison decides the outcome.
 | L3 | Runtime arbiter (browser process command line) | Arbiter only |
 | L4 | MDM policy CSP store (`PolicyManager`) | Yes, device scope |
 
+### 3.1 Evidence precedence architecture
+
+```mermaid
+flowchart TD
+  Control[Control definition and expected state]
+  Managed[Managed policy stores<br/>GPO, ADMX, policies.json]
+  User[User configuration<br/>Preferences, prefs.js, user.js]
+  Runtime[Runtime evidence<br/>process command line]
+  CSP[MDM CSP observation<br/>PolicyManager]
+
+  Control --> L1[L1 managed value comparison]
+  Managed --> L1
+  Control --> L2[L2 user value comparison]
+  User --> L2
+
+  L1 --> L1State{L1 state}
+  L1State -->|NON_COMPLIANT_VALUE| FailL1[FAIL decided by L1]
+  L1State -->|COMPLIANT| RuntimeNeed{Runtime signal or<br/>lower-layer drift?}
+  L1State -->|ABSENT or not applicable| L2State{L2 state}
+
+  L2 --> L2State
+  L2State -->|COMPLIANT| NotEnforced[PASS_NOT_ENFORCED<br/>user-revertible]
+  L2State -->|NON_COMPLIANT_VALUE| FailL2[FAIL decided by L2]
+  L2State -->|insufficient evidence| NotAssessed[NOT_ASSESSED]
+  L2State -->|L1 and L2 not applicable| L3
+
+  RuntimeNeed -->|No| PassL1[PASS decided by L1]
+  RuntimeNeed -->|Yes| L3[L3 runtime arbiter]
+  Runtime --> L3
+  L3 --> L3State{L3 state}
+  L3State -->|COMPLIANT| PassL3[PASS decided by L3]
+  L3State -->|NON_COMPLIANT_VALUE| FailL3[FAIL decided by L3]
+  L3State -->|NOT_ASSESSED| PassL1
+
+  CSP --> L4[L4 provenance projection]
+  L1 -.-> Report[Report provenance metadata]
+  L4 -.-> Report
+```
+
+The verdict resolver consumes L1, L2 and L3. L4 records device-scope MDM CSP
+provenance and mirrors the managed evidence where applicable; it is not a
+fourth vote. L3 runs only for runtime-oriented controls or when managed and
+lower-layer evidence conflict. An inconclusive L3 result does not erase a
+conclusive managed comparison.
+
 Per-layer states: `COMPLIANT`, `NON_COMPLIANT_VALUE`, `ABSENT`,
 `NOT_APPLICABLE`, `NOT_ASSESSED`.
 
 Key presence is never treated as compliance. Every layer performs an
 expected-versus-actual comparison or returns `NOT_ASSESSED`.
 
-### 3.1 Limits placed on the runtime arbiter
+### 3.2 Limits placed on the runtime arbiter
 
 The arbiter inspects the running browser for policy-neutralising switches
 (`--disable-features=`, `--disable-policy`, `--disable-web-security`,

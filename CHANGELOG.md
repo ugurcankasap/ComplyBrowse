@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Documentation
+- Added a Mermaid architecture diagram for the L1-L3 evidence precedence and L4 provenance flow.
+- Added an end-to-end control contribution guide covering catalogs, policy maps, runners, verification semantics, and validation gates.
+
 ## [v1.0.1] - 2026-09-03
 
 ### Reliability

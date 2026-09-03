@@ -314,9 +314,9 @@ Backward compatibility is preserved: the legacy evidence list continues to work.
 ### Public Documentation
 
 - **[README.md](README.md)** — This file; quick start guide
-- **[VERIFICATION_METHODOLOGY.md](VERIFICATION_METHODOLOGY.md)** — Technical architecture, verdict logic, layer precedence
+- **[VERIFICATION_METHODOLOGY.md](VERIFICATION_METHODOLOGY.md)** — Technical architecture, visual evidence precedence, verdict logic
 - **[SECURITY.md](SECURITY.md)** — Security policy, use disclaimers, responsible disclosure
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Developer contribution guidelines
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Developer guidelines and end-to-end control contribution workflow
 - **[NOTICE](NOTICE)** — Third-party attribution and licensing
 
 ### Release Documentation
@@ -337,6 +337,7 @@ This repository follows release-based versioning. The canonical version is store
 - Fast release readiness card: [RELEASE_READY_5_CHECKS.md](RELEASE_READY_5_CHECKS.md)
 - Publish preparation: [PUBLISH_PREPARE.md](PUBLISH_PREPARE.md)
 - Draft release notes:
+  - [releases/v1.0.1.md](releases/v1.0.1.md)
   - [releases/v1.0.0.md](releases/v1.0.0.md)
   - [releases/v1.1.0.md](releases/v1.1.0.md)
   - [releases/v1.2.0.md](releases/v1.2.0.md)
