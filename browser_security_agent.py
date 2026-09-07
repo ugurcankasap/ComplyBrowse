@@ -272,7 +272,7 @@ class BrowserSecurityAgent:
         recommendation_items = "".join(f"<li>{item}</li>" for item in report.get("recommendations", []))
 
         return f"""<!DOCTYPE html>
-<html lang=\"tr\">
+<html lang=\"en\">
 <head>
   <meta charset=\"UTF-8\" />
   <title>Browser Security Report</title>

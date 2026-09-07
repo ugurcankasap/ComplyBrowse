@@ -30,7 +30,7 @@ try {
             $response.ContentLength64 = $fileContent.Length
             
             # Set content type
-            $ext = [System.IO.Path]::GetExtension($filePath).ToLower()
+            $ext = [System.IO.Path]::GetExtension($filePath).ToLowerInvariant()
             $contentType = switch ($ext) {
                 ".html" { "text/html" }
                 ".json" { "application/json" }

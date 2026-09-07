@@ -176,7 +176,7 @@ function Sanitize-ReportText {
         $cleaned = "$label a risky configuration was detected in this control."
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($TestName) -and $cleaned.ToLower() -eq $TestName.ToLower()) {
+    if (-not [string]::IsNullOrWhiteSpace($TestName) -and [string]::Equals($cleaned, $TestName, [System.StringComparison]::OrdinalIgnoreCase)) {
         $cleaned = "$TestName a state that is not aligned with enterprise security expectations was detected in this control."
     }
 
@@ -218,7 +218,7 @@ function ConvertTo-BoolSafe {
     if ($null -eq $Value) { return $false }
 
     if ($Value -is [string]) {
-        $t = $Value.Trim().ToLower()
+        $t = $Value.Trim().ToLowerInvariant()
         if ([string]::IsNullOrWhiteSpace($t)) { return $false }
         return ($t -in @('true', '1', 'yes', 'y', 'evet'))
     }
@@ -388,7 +388,7 @@ function Normalize-ReportPayload {
         $Payload.test_name
     ) -TestName $testName
     if ([string]::IsNullOrWhiteSpace($findingDetails)) { $findingDetails = $currentFinding }
-    if ($findingDetails.ToLower() -eq $currentFinding.ToLower()) {
+    if ([string]::Equals($findingDetails, $currentFinding, [System.StringComparison]::OrdinalIgnoreCase)) {
         $findingDetails = Get-FirstMeaningfulText -Candidates @($Payload.manual_check_expected, $Payload.impact, $Payload.test_name) -TestName $testName
         if ([string]::IsNullOrWhiteSpace($findingDetails)) { $findingDetails = $currentFinding }
     }
