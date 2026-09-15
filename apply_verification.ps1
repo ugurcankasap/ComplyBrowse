@@ -1146,8 +1146,34 @@ foreach ($test in $allResults) {
         $channelSuppressed = $true
     }
 
+    $accessDenied = [bool]$layer1.access_denied -or [bool]$layer2.access_denied
+    $accessDeniedReason = "$([string]$test.access_denied_reason) $([string]$layer1.details) $([string]$layer2.details)"
+    $macProfileInventoryUnreadable = ($mgmtProfile.platform -eq 'macOS' -and @($mgmtProfile.unreadable_channels | Where-Object { $_.channel -eq 'MDM_PROFILE_UNREADABLE' }).Count -gt 0)
+    if ($accessDenied -or $macProfileInventoryUnreadable) {
+        $decision.verdict = 'NOT_ASSESSED'
+        $decision.deciding_layer = 'NONE'
+        $decision.counts_in_score = $false
+        $decision.reasoning = 'An applicable evidence collector was denied access. The result is NOT_ASSESSED and excluded from scoring because unreadable evidence cannot establish that a configuration is absent.'
+    }
+
     $rootCause = Get-RootCauseClassification -Decision $decision -Layer1 $layer1 -Layer2 $layer2 -Layer3 $layer3
-    if ($channelSuppressed) {
+    if ($accessDenied -and $accessDeniedReason -match '(?i)\btcc\b|full disk access') {
+        $rootCause = @{
+            code           = 'RC_TCC_PERMISSION_MISSING'
+            category       = 'EVIDENCE_COVERAGE'
+            summary        = 'macOS privacy controls denied access to required evidence; the control could not be assessed.'
+            evidence_layer = 'NONE'
+        }
+    }
+    elseif ($accessDenied -or $macProfileInventoryUnreadable) {
+        $rootCause = @{
+            code           = 'RC_PRIVILEGE_INSUFFICIENT'
+            category       = 'EVIDENCE_COVERAGE'
+            summary        = 'Required macOS configuration-profile or preference evidence could not be read with the current privileges.'
+            evidence_layer = 'NONE'
+        }
+    }
+    elseif ($channelSuppressed) {
         $rootCause = @{
             code           = 'RC_MANAGEMENT_CHANNEL_UNREADABLE'
             category       = 'EVIDENCE_COVERAGE'
@@ -1306,7 +1332,7 @@ $enrichedReport | Add-Member -NotePropertyName 'verification_summary' -NotePrope
             UNKNOWN = 0.20
         }
     }
-    root_cause_standard = 'v2: RC_POLICY_NOT_DEPLOYED, RC_POLICY_VALUE_MISMATCH, RC_POLICY_ABSENT_USER_MISMATCH, RC_CONTROL_UNCONFIGURED, RC_RUNTIME_CONTRADICTION, RC_USER_VALUE_MISMATCH, RC_USER_SETTING_MISSING, RC_MANAGEMENT_CHANNEL_UNREADABLE, RC_UNCLASSIFIED_FAIL'
+    root_cause_standard = 'v3: RC_POLICY_NOT_DEPLOYED, RC_POLICY_VALUE_MISMATCH, RC_POLICY_ABSENT_USER_MISMATCH, RC_CONTROL_UNCONFIGURED, RC_RUNTIME_CONTRADICTION, RC_USER_VALUE_MISMATCH, RC_USER_SETTING_MISSING, RC_MANAGEMENT_CHANNEL_UNREADABLE, RC_TCC_PERMISSION_MISSING, RC_PRIVILEGE_INSUFFICIENT, RC_UNCLASSIFIED_FAIL'
     fail_root_cause_distribution = $failRootCauseDistribution
     behavioral_validation_summary = @{
         policy_object_behavior_gap_count = $behavioralGapCount

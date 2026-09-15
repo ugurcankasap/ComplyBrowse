@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List
+
+import yaml
 
 from tests.test_framework import (
     RiskCalculator,
@@ -50,7 +51,10 @@ class BrowserSecurityAgent:
         self.audit_report: SecurityAuditReport | None = None
 
     def _load_config(self, config_path: Path) -> Dict[str, Any]:
-        text = config_path.read_text(encoding="utf-8")
+        loaded = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        if not isinstance(loaded, dict):
+            raise ValueError("Configuration root must be a YAML mapping.")
+
         cfg: Dict[str, Any] = {
             "general": {},
             "implementation_scope": {},
@@ -58,67 +62,20 @@ class BrowserSecurityAgent:
             "test_packages": {},
         }
 
-        in_general = False
-        in_impl_scope = False
-        in_package_order = False
-        in_test_packages = False
-        current_package_key = ""
+        for section in ("general", "implementation_scope", "test_packages"):
+            value = loaded.get(section)
+            if isinstance(value, dict):
+                cfg[section] = value
 
-        for raw_line in text.splitlines():
-            if not raw_line.strip() or raw_line.strip().startswith("#"):
-                continue
-
-            indent = len(raw_line) - len(raw_line.lstrip(" "))
-            stripped = raw_line.strip()
-
-            if indent == 0 and stripped.endswith(":"):
-                in_general = stripped == "general:"
-                in_impl_scope = stripped == "implementation_scope:"
-                in_package_order = stripped == "package_order:"
-                in_test_packages = stripped == "test_packages:"
-                if not in_test_packages:
-                    current_package_key = ""
-                continue
-
-            if in_general and indent == 2 and ":" in stripped:
-                key, value = stripped.split(":", 1)
-                cfg["general"][key.strip()] = self._parse_scalar(value)
-                continue
-
-            if in_impl_scope and indent == 2 and ":" in stripped:
-                key, value = stripped.split(":", 1)
-                cfg["implementation_scope"][key.strip()] = self._parse_scalar(value)
-                continue
-
-            if in_package_order and indent == 2 and stripped.startswith("-"):
-                cfg["package_order"].append(stripped[1:].strip())
-                continue
-
-            if in_test_packages and indent == 2 and stripped.endswith(":") and stripped.startswith("package_"):
-                current_package_key = stripped[:-1]
-                cfg["test_packages"][current_package_key] = {}
-                continue
-
-            if in_test_packages and current_package_key and indent == 4 and ":" in stripped:
-                key, value = stripped.split(":", 1)
-                cfg["test_packages"][current_package_key][key.strip()] = self._parse_scalar(value)
+        package_order = loaded.get("package_order")
+        if isinstance(package_order, list):
+            cfg["package_order"] = package_order
 
         active = cfg["implementation_scope"].get("active_packages")
         if not isinstance(active, int):
             cfg["implementation_scope"]["active_packages"] = len(cfg["package_order"])
 
         return cfg
-
-    @staticmethod
-    def _parse_scalar(value: str) -> Any:
-        raw = value.strip()
-        if raw.startswith('"') and raw.endswith('"'):
-            return raw[1:-1]
-        if raw.startswith("'") and raw.endswith("'"):
-            return raw[1:-1]
-        if re.fullmatch(r"-?\d+", raw):
-            return int(raw)
-        return raw
 
     def _get_package_plan(self) -> List[Dict[str, Any]]:
         package_order = self.config.get("package_order", [])

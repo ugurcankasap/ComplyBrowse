@@ -1,0 +1,6 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "PasswordManagerEnabled": false
+  }
+}

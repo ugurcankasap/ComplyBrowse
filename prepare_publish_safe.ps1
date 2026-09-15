@@ -15,7 +15,8 @@ $targets = @(
     @{ Path = Join-Path $root '3LAYER_VERIFICATION_REPORT.md'; Type = 'File'; Reason = 'Contains findings summary and historical evidence narrative' },
     @{ Path = Join-Path $root 'MULTI_LAYER_VERIFICATION_REPORT.md'; Type = 'File'; Reason = 'Contains findings summary and historical evidence narrative' },
     @{ Path = Join-Path $root 'ENRICHMENT_REPORT.md'; Type = 'File'; Reason = 'Contains findings summary and historical evidence narrative' },
-    @{ Path = Join-Path $root 'reports/turkish_test_lines.txt'; Type = 'File'; Reason = 'Test metadata with endpoint context' }
+    @{ Path = Join-Path $root 'reports/turkish_test_lines.txt'; Type = 'File'; Reason = 'Test metadata with endpoint context' },
+    @{ Path = Join-Path $root '.coverage'; Type = 'File'; Reason = 'Local coverage database' }
 )
 
 $patterns = @(
@@ -26,6 +27,15 @@ $patterns = @(
     'test_results.json',
     'chrome_test_*.json',
     'firefox_test_*.json',
+    'chrome_macos_test_*.json',
+    'chrome_macos_verified*.json',
+    'firefox_macos_test_*.json',
+    'firefox_macos_verified*.json',
+    'safari_macos_test_*.json',
+    'safari_macos_verified*.json',
+    'safari_macos_raw_report.json',
+    'chrome_macos_raw_report.json',
+    'firefox_macos_raw_report.json',
     '*_raw_report.json',
     '_tmp*.json',
     '.coverage'
@@ -77,6 +87,11 @@ if (-not $DryRun) {
         if (-not (Test-Path -LiteralPath $path)) {
             New-Item -ItemType Directory -Path $path -Force | Out-Null
         }
+    }
+
+    & (Join-Path $root 'tools/check_publish_safety.ps1') -RepositoryRoot $root
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Publish safety gate failed after cleanup.'
     }
 }
 

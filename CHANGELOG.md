@@ -4,12 +4,29 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-09-15
+
 ### Documentation
 - Added a Mermaid architecture diagram for the L1-L3 evidence precedence and L4 provenance flow.
 - Added an end-to-end control contribution guide covering catalogs, policy maps, runners, verification semantics, and validation gates.
+- Established `integrated_report.html` as the canonical viewer; `dashboard.html` now redirects to it.
+
+### Security
+- Added an automated publish-safety gate that blocks private report outputs and machine-specific evidence markers before release.
 
 ### Changed
 - Reference-catalog result names now show only the control title; CIS identifiers remain in the dedicated reference-control field.
+
+### macOS
+- Added fixture-based Chrome and Firefox macOS evidence tests, platform-aware report separation, and TCC-aware `NOT_ASSESSED` handling.
+- Added strict public-report sanitization for macOS paths, profiles, device identifiers, MDM metadata, extension IDs and raw plist content.
+- Added a macOS GitHub Actions job that runs synthetic fixtures only; live MDM/L1 collection remains endpoint-only.
+- macOS CI now records its fixture-only scope in the job summary and runs the declared Ruff and coverage gates.
+- Added limited Safari macOS support using CIS Apple macOS Benchmark references, TCC-gated preferences, and no runtime arbiter.
+
+### Tooling
+- Added a shared `PSScriptAnalyzerSettings.psd1` profile so the PowerShell lint gate produces identical results locally and in CI.
+- Replaced silent empty catch blocks in the Windows and macOS collectors with verbose diagnostics, so failed evidence probes are traceable.
 
 ## [v1.0.1] - 2026-09-03
 

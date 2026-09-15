@@ -1,7 +1,7 @@
 ﻿# ComplyBrowse: Enterprise Browser Security Testing and Compliance Verification
 
 [![CI](https://github.com/ugurcankasap/ComplyBrowse/actions/workflows/ci.yml/badge.svg)](https://github.com/ugurcankasap/ComplyBrowse/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v1.0.1-blue)](VERSION)
+[![Version](https://img.shields.io/badge/version-v1.1.0-blue)](VERSION)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-3776AB)](requirements.txt)
 [![PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE)](README.md#requirements)
@@ -22,6 +22,20 @@ Current snapshot (latest verified outputs in this repository):
 - Firefox: 80 tests
 
 The canonical source of package order and active scope is [config.yaml](config.yaml). This README provides a practical summary.
+
+### Platform Support Matrix
+
+| Browser | Windows collection | macOS collection | CI coverage |
+| --- | --- | --- | --- |
+| Microsoft Edge | Supported | Not collected | Windows regression and fixture contracts |
+| Google Chrome | Supported | Managed/user preference and runtime collectors | macOS fixture tests only |
+| Mozilla Firefox | Supported | `policies.json`, preference domains, profiles and runtime collectors | macOS fixture tests only |
+| Apple Safari | Not applicable | Limited, TCC-gated preference/configuration-profile controls; no L3 arbiter | macOS fixture tests only |
+
+Safari is mapped to the CIS Apple macOS Benchmark rather than an independent
+Safari CIS benchmark. macOS TCC denials and unavailable MDM inventory are reported as
+`NOT_ASSESSED`. GitHub-hosted macOS runners are not MDM-enrolled, so CI runs
+synthetic fixtures only and never claims live L1 enforcement.
 
 ## Requirements
 
@@ -86,6 +100,13 @@ py -3 -m pip install -r requirements.txt
 If the `py` launcher is unavailable, use `python -m pip` with the Python
 executable that is installed on the machine.
 
+To install the project as an editable package with development tools:
+
+```bash
+python -m pip install -e ".[dev]"
+browser-security
+```
+
 ### 2. Update configuration
 
 Edit organization values in [config.yaml](config.yaml):
@@ -97,6 +118,52 @@ general:
   environment: "Production"
   tester_name: "Security Team"
 ```
+
+## End-to-End Edge Example
+
+Run these commands from the project directory in PowerShell. The scan creates
+raw test evidence, verification applies the Edge policy map, and the report
+viewer presents the verified result.
+
+```powershell
+New-Item -ItemType Directory -Force .\reports\raw | Out-Null
+
+# 1. Run all Edge controls and write raw results.
+.\test_runner.ps1 -TestId ALL -OutputJSON `
+    -OutputFile .\reports\raw\edge_test_results.json
+
+# 2. Apply value-based verification to the raw results.
+.\apply_verification.ps1 -InputFile .\reports\raw\edge_test_results.json `
+    -Browser Edge -OutputFile .\reports\raw\edge_verified.json
+
+# 3. Serve the report viewer locally.
+powershell -File .\http_server.ps1 -Port 8888 -Path .
+```
+
+Open <http://localhost:8888/integrated_report.html> and select the Edge tab.
+The generated files are:
+
+```text
+reports/raw/edge_test_results.json   # observed test results and evidence
+reports/raw/edge_verified.json       # PASS/FAIL verification verdicts
+artifacts/<run-id>/                  # per-control evidence artifacts
+```
+
+Representative verification output:
+
+```text
+PASS              : 42
+PASS_NOT_ENFORCED : 3
+FAIL              : 5
+NOT_ASSESSED      : 0
+Compliance score  : 84% (PASS only, NOT_ASSESSED excluded)
+Saved: .\reports\raw\edge_verified.json (... bytes)
+```
+
+The exact counts depend on the browser installation, policies, management
+channel, and local permissions. A `FAIL` verdict is a control result, not a
+PowerShell command failure; inspect its evidence and remediation fields in
+`edge_verified.json` and the Edge tab of the viewer.
 
 ## Practical Start
 
@@ -277,14 +344,14 @@ Summary:
 ### Primary Report Viewer
 
 **[integrated_report.html](integrated_report.html)** — Canonical unified viewer for all 3 browsers
-- Reads verified JSON outputs: `edge_verified.json`, `chrome_verified.json`, `firefox_verified.json`
+- Reads Windows outputs and optional macOS outputs (`chrome_macos_verified.json`, `firefox_macos_verified.json`)
 - Displays: verdicts, evidence breakdown, compliance scores, data quality metrics
-- Filters: by status, severity, package, risk domain
+- Filters: by platform, status, severity, package, risk domain
 - Export: CSV (filtered results)
 - Setup: `powershell -File http_server.ps1 -Port 8888 -Path .`, then open http://localhost:8888/integrated_report.html
 
-Legacy viewers (archived, not recommended for new deployments):
-- `dashboard.html` (single-browser, outdated)
+Compatibility entry points:
+- `dashboard.html` redirects to the canonical unified viewer, preserving browser-tab URL fragments.
 - `layer_topology_diagram.html` (architecture reference only)
 
 ### HTML Report
@@ -336,10 +403,11 @@ This repository follows release-based versioning. The canonical version is store
 - Release checklist: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
 - Fast release readiness card: [RELEASE_READY_5_CHECKS.md](RELEASE_READY_5_CHECKS.md)
 - Publish preparation: [PUBLISH_PREPARE.md](PUBLISH_PREPARE.md)
-- Draft release notes:
+- Release notes:
+  - [releases/v1.1.0.md](releases/v1.1.0.md)
   - [releases/v1.0.1.md](releases/v1.0.1.md)
   - [releases/v1.0.0.md](releases/v1.0.0.md)
-  - [releases/v1.1.0.md](releases/v1.1.0.md)
+- Planned release notes (not shipped):
   - [releases/v1.2.0.md](releases/v1.2.0.md)
 
 ## Attribution & License

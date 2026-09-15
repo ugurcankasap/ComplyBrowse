@@ -1,4 +1,5 @@
 import ast
+import json
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,12 @@ CONTROL_CATALOGS = {
     "edge_cis_controls.txt": ("test_runner.ps1", 26, "Edge reference catalog not found"),
     "chrome_cis_controls.txt": ("chrome_test_runner.ps1", 88, "Chrome CIS control catalog not found"),
     "firefox_security_controls.txt": ("firefox_test_runner.ps1", 60, "Firefox control catalog not found"),
+}
+
+MACOS_CONTROL_CATALOGS = {
+    "chrome_macos_policy_map.json": ("chrome_macos_test_runner.ps1", 90, "Chrome macOS policy map not found"),
+    "firefox_macos_policy_map.json": ("firefox_macos_test_runner.ps1", 60, "Firefox macOS policy map not found"),
+    "safari_controls.txt": ("safari_macos_test_runner.ps1", 9, "Safari control catalog not found"),
 }
 
 
@@ -101,7 +108,7 @@ class TestControlCatalogContracts(unittest.TestCase):
             with self.subTest(runner=runner_name):
                 runner_source = (ROOT / runner_name).read_text(encoding="utf-8-sig")
                 missing_catalog_guard = (
-                    f"if (-not (Test-Path $catalogPath)) {{" in runner_source
+                    "if (-not (Test-Path $catalogPath)) {" in runner_source
                     and f"{catalog_name}" in runner_source
                     and f'throw "{error_fragment}:' in runner_source
                 )
@@ -121,6 +128,22 @@ class TestControlCatalogContracts(unittest.TestCase):
                 self.assertNotIn('Name = "Reference control', function_source)
                 self.assertNotIn('Name = "CIS $($def.control_id)', function_source)
                 self.assertIn("CISControls = @($def.control_id)", function_source)
+
+    def test_macos_policy_maps_are_present_and_complete(self):
+        for catalog_name, (runner_name, expected_count, error_fragment) in MACOS_CONTROL_CATALOGS.items():
+            with self.subTest(catalog=catalog_name):
+                catalog_path = ROOT / catalog_name
+                self.assertTrue(catalog_path.is_file(), f"Required macOS catalog is missing: {catalog_name}")
+                if catalog_path.suffix == ".txt":
+                    controls = [line for line in catalog_path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+                else:
+                    document = json.loads(catalog_path.read_text(encoding="utf-8-sig"))
+                    controls = document if isinstance(document, list) else document.get("controls", [])
+                self.assertEqual(len(controls), expected_count)
+
+                runner_source = (ROOT / runner_name).read_text(encoding="utf-8-sig")
+                self.assertIn(catalog_name, runner_source)
+                self.assertIn(f'throw "{error_fragment}:', runner_source)
 
 
 class TestCommunityHealthContracts(unittest.TestCase):

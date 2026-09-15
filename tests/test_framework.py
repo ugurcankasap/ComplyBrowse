@@ -11,7 +11,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
-import hashlib
 
 
 def is_quiet_mode() -> bool:

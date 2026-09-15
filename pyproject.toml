@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "browser-security"
+version = "1.1.0"
+description = "Browser security assessment tooling"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+dev = [
+	"coverage>=7.6,<8",
+	"pre-commit>=3.7,<5",
+	"ruff>=0.6,<1",
+]
+
+[project.scripts]
+browser-security = "browser_security_agent:main"
+macos-local-report = "macos_local_report:main"
+
+[tool.setuptools]
+py-modules = ["browser_security_agent", "macos_local_report"]
+
+[tool.setuptools.packages.find]
+include = ["tests*"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+exclude = ["artifacts", "reports", "releases"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

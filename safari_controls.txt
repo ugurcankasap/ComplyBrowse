@@ -1,0 +1,9 @@
+SAF-001|Private Browsing restriction|AllowPrivateBrowsing|false|true|Safari private browsing restriction is compared from a readable managed or user preference.
+SAF-002|Password AutoFill|AutoFillPasswords|false|true|Safari password AutoFill preference.
+SAF-003|Extension inventory|ExtensionInstallAllowlist||false|Current extension inventory is not a stable MDM-comparable Safari control on supported macOS releases.
+SAF-004|Extension permission status|ExtensionPermissionPolicy||false|Safari extension permission state is not a stable MDM-comparable control.
+SAF-005|Download behavior|AutoOpenSafeDownloads|false|true|Automatic opening of safe downloads.
+SAF-006|Pop-up setting|AllowPopups|false|true|Safari pop-up allowance.
+SAF-007|JavaScript setting|AllowJavaScript|true|true|Safari JavaScript allowance.
+SAF-008|Web content filtering|WebContentFilter||true|Configuration-profile web content filtering evidence.
+SAF-009|Managed preference presence|com.apple.Safari||true|Presence of a readable managed Safari preference payload.

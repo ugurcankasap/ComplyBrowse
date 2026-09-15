@@ -5,12 +5,12 @@ from typing import List, Dict, Any
 try:
     from tests.test_framework import (
         TestResult, TestLogger, TestStatus, Severity,
-        create_test_result, RemediationGuide, is_quiet_mode
+        create_test_result, is_quiet_mode
     )
 except ImportError:
     from test_framework import (
         TestResult, TestLogger, TestStatus, Severity,
-        create_test_result, RemediationGuide, is_quiet_mode
+        create_test_result, is_quiet_mode
     )
 
 if is_quiet_mode():
@@ -233,7 +233,7 @@ class IdentitySessionTestSuite:
     def run_all_tests(self) -> Dict[str, Any]:
         """Run all tests"""
         print(f"\n{'='*60}")
-        print(f"Work Personal Profile Isolation tests running...")
+        print("Work Personal Profile Isolation tests running...")
         print(f"Browser: {self.browser}")
         print(f"{'='*60}\n")
         
@@ -246,7 +246,7 @@ class IdentitySessionTestSuite:
         summary = self.logger.get_summary()
         
         print(f"\n{'='*60}")
-        print(f"Package Summary:")
+        print("Package Summary:")
         print(f"  Total Tests: {summary['total']}")
         print(f"  Passed: {summary['passed']} ")
         print(f"  Failed: {summary['failed']} ")

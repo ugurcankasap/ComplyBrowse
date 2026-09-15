@@ -1,0 +1,850 @@
+{
+    "schema_version": "1.0",
+    "browser": "Firefox",
+    "platform": "macOS",
+    "derived_from": "firefox_cis_policy_map.json",
+    "derivation_rule": "control_id and policy_key are carried over unchanged from the Windows map. Only macOS channel information is added. This file never overrides the Windows map.",
+    "preference_domain": "org.mozilla.firefox",
+
+    "channels": {
+        "policies_json": {
+            "id": "POLICIES_JSON",
+            "description": "Enterprise policy file shipped inside the Firefox application bundle.",
+            "bundle_relative_path": "Contents/Resources/distribution/policies.json",
+            "root_key": "policies",
+            "enforced": true,
+            "layer": "L1"
+        },
+        "plist": {
+            "id": "PLIST",
+            "description": "Preference-domain policies delivered as a configuration profile by an MDM, or written directly into the preference domain.",
+            "preference_domain": "org.mozilla.firefox",
+            "gate": {
+                "key": "EnterprisePoliciesEnabled",
+                "required_value": true,
+                "note": "Firefox reads policies from the preference domain only when this key is present and true. Without it the plist channel is inactive even if policy keys exist in the domain."
+            },
+            "key_layout": "Policy keys sit at the top level of the domain, with no 'policies' wrapper. Nested policies are dictionaries with the same member names as policies.json.",
+            "scopes": [
+                {
+                    "id": "MANAGED",
+                    "root": "/Library/Managed Preferences",
+                    "also_scan_user_subdirectories": true,
+                    "enforced": true,
+                    "layer": "L1",
+                    "note": "MDM-delivered configuration profiles land here and shadow every lower scope."
+                },
+                {
+                    "id": "SYSTEM",
+                    "root": "/Library/Preferences",
+                    "enforced": false,
+                    "layer": "L2",
+                    "note": "Machine-wide but locally writable by an administrator; not proof of managed enforcement."
+                },
+                {
+                    "id": "USER",
+                    "root": "~/Library/Preferences",
+                    "enforced": false,
+                    "layer": "L2",
+                    "note": "User-revertible."
+                }
+            ]
+        },
+        "profile_preferences": {
+            "id": "PROFILE_PREFS",
+            "description": "Per-profile user configuration; never enforced.",
+            "evidence_files": [
+                "prefs.js",
+                "user.js"
+            ],
+            "enforced": false,
+            "layer": "L2"
+        }
+    },
+
+    "channel_precedence": {
+        "model": "PROVIDER_EXCLUSIVE",
+        "winner": "PLIST",
+        "order": [
+            "PLIST",
+            "POLICIES_JSON"
+        ],
+        "rule": "Firefox selects one policy provider for the whole policy set, it does not merge them. On macOS the preference-domain provider is offered first: when EnterprisePoliciesEnabled is true in org.mozilla.firefox, every policy value comes from the preference domain and policies.json is not read at all, including for keys the plist does not define. Only when the gate is absent or false does the policies.json provider apply.",
+        "granularity": "The winner is decided once per endpoint, not per control. A control absent from the winning provider is unconfigured, even when the losing provider defines it.",
+        "within_plist_channel": {
+            "order": [
+                "MANAGED",
+                "SYSTEM",
+                "USER"
+            ],
+            "rule": "CFPreferences resolution: a value in /Library/Managed Preferences shadows the same key in every lower scope."
+        },
+        "conflict_handling": {
+            "report_both": true,
+            "effective_channel_field": "effective_channel",
+            "conflict_flag": "channel_conflict",
+            "verdict_source": "The verdict is decided by the effective channel only. The losing channel is recorded as context and never changes the verdict.",
+            "note": "A value present only in the losing channel is reported as a deployment defect (configured but not in force), not as compliance."
+        },
+        "unreadable_channel": {
+            "result": "NOT_ASSESSED",
+            "root_cause": "RC_TCC_PERMISSION_MISSING",
+            "rule": "If the gate key cannot be read, the winning provider is unknown and the control is not assessed rather than failed."
+        }
+    },
+
+    "discovery": {
+        "rule": "No fixed path is embedded in the collector. Every path below is a candidate that must be probed in the given order, and the path that produced a value is recorded with the evidence.",
+        "order": [
+            "application_bundle",
+            "policies_json",
+            "profiles_ini",
+            "profiles"
+        ],
+        "application_bundle": {
+            "candidate_paths": [
+                "/Applications/Firefox.app",
+                "/Applications/Firefox Developer Edition.app",
+                "/Applications/Firefox Nightly.app",
+                "/Applications/Firefox ESR.app",
+                "~/Applications/Firefox.app",
+                "~/Applications/Firefox Developer Edition.app",
+                "~/Applications/Firefox Nightly.app",
+                "/Applications/Utilities/Firefox.app",
+                "/opt/homebrew-cask/Caskroom/firefox/Firefox.app"
+            ],
+            "resolve_from_running_process": true,
+            "process_pattern": "(?i)firefox",
+            "process_path_to_bundle": "Strip the /Contents/MacOS/<binary> suffix from the running executable path to obtain the bundle, so a bundle in a non-standard location is still discovered.",
+            "version_plist_relative_path": "Contents/Info.plist",
+            "scan_all_matches": true,
+            "note": "Every candidate that exists is inspected. Multiple installed bundles are all reported; the running bundle is listed first when it can be resolved."
+        },
+        "policies_json": {
+            "bundle_relative_path": "Contents/Resources/distribution/policies.json",
+            "root_key": "policies",
+            "note": "Resolved against each discovered bundle, never against a hardcoded /Applications path."
+        },
+        "profiles_ini": {
+            "candidate_paths": [
+                "~/Library/Application Support/Firefox/profiles.ini",
+                "~/Library/Application Support/Firefox Developer Edition/profiles.ini",
+                "~/Library/Application Support/Firefox Nightly/profiles.ini"
+            ],
+            "section_keys": {
+                "path": "Path",
+                "is_relative": "IsRelative",
+                "default": "Default",
+                "name": "Name"
+            },
+            "relative_path_base": "The directory containing profiles.ini",
+            "note": "installs.ini may also mark a default profile; it does not restrict the scan."
+        },
+        "profiles": {
+            "scan_all_profiles": true,
+            "default_profile_first": true,
+            "fallback_root": "~/Library/Application Support/Firefox/Profiles",
+            "evidence_files": [
+                "prefs.js",
+                "user.js"
+            ],
+            "rule": "Every profile listed in profiles.ini is scanned, not only the default one. Default profiles are read first so the most representative value is reported first, but a non-default profile that carries the preference is still reported."
+        },
+        "preference_domain": {
+            "domain": "org.mozilla.firefox",
+            "candidate_roots": [
+                "/Library/Managed Preferences",
+                "/Library/Managed Preferences/<console_user>",
+                "/Library/Preferences",
+                "~/Library/Preferences"
+            ],
+            "file_name_pattern": "<domain>.plist",
+            "reader": "/usr/bin/plutil -convert json"
+        }
+    },
+
+    "evidence_provenance": {
+        "rule": "Every collected value records where it came from, so no finding depends on an unstated assumption about which file or profile was read.",
+        "required_fields": [
+            "channel",
+            "scope",
+            "source_path",
+            "key_path"
+        ],
+        "bundle_evidence_fields": [
+            "bundle_path",
+            "bundle_version"
+        ],
+        "profile_evidence_fields": [
+            "profile_name",
+            "profile_path",
+            "profile_is_default",
+            "profile_source",
+            "evidence_file"
+        ],
+        "profile_source_values": [
+            "profiles.ini",
+            "profiles_directory_scan"
+        ],
+        "scanned_inventory_fields": [
+            "bundles_scanned",
+            "profiles_scanned",
+            "profiles_ini_path",
+            "channels_scanned",
+            "channels_unreadable"
+        ]
+    },
+
+    "pref_mode_notes": {
+        "policies_json_shape": "PREF-mode controls are delivered through the Preferences policy: policies.Preferences.<pref_name>.",
+        "value_shapes": [
+            "Legacy shape: the member is the scalar value itself.",
+            "Firefox 81+ shape: the member is an object with Value, Status and Type members; the comparison uses Value and Status='locked' proves enforcement."
+        ],
+        "requirement": "A collector must accept both shapes before declaring a preference unset."
+    },
+
+    "controls": [
+        {
+            "control_id": "1.1",
+            "policy_key": "DisablePrivateBrowsing",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisablePrivateBrowsing",
+            "plist_key_path": "DisablePrivateBrowsing",
+            "pref_name": "browser.privatebrowsing.autostart",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.2",
+            "policy_key": "PasswordManagerEnabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.PasswordManagerEnabled",
+            "plist_key_path": "PasswordManagerEnabled",
+            "pref_name": "signon.rememberSignons",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.3",
+            "policy_key": "ExtensionSettings",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.ExtensionSettings",
+            "plist_key_path": "ExtensionSettings",
+            "pref_name": "",
+            "value_type": "object",
+            "mode": "POLICY",
+            "equivalent_policy_keys": [
+                "Extensions"
+            ],
+            "notes": "No preference equivalent; the policy is applied through the extension settings store, so only the managed channels can prove it."
+        },
+        {
+            "control_id": "1.4",
+            "policy_key": "DisableSecurityBypass",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableSecurityBypass",
+            "plist_key_path": "DisableSecurityBypass",
+            "pref_name": "security.certerror.hideAddException",
+            "equivalent_pref_names": [
+                "browser.safebrowsing.allowOverride"
+            ],
+            "value_type": "object",
+            "mode": "POLICY",
+            "notes": "Object policy: InvalidCertificate maps to security.certerror.hideAddException, SafeBrowsing maps to browser.safebrowsing.allowOverride."
+        },
+        {
+            "control_id": "1.5",
+            "policy_key": "DisableTelemetry",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableTelemetry",
+            "plist_key_path": "DisableTelemetry",
+            "pref_name": "datareporting.healthreport.uploadEnabled",
+            "equivalent_pref_names": [
+                "datareporting.policy.dataSubmissionEnabled"
+            ],
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.6",
+            "policy_key": "DisableFirefoxAccounts",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableFirefoxAccounts",
+            "plist_key_path": "DisableFirefoxAccounts",
+            "pref_name": "identity.fxaccounts.enabled",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.7",
+            "policy_key": "DNSOverHTTPS",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DNSOverHTTPS",
+            "plist_key_path": "DNSOverHTTPS",
+            "pref_name": "network.trr.mode",
+            "equivalent_pref_names": [
+                "network.trr.uri",
+                "network.trr.custom_uri",
+                "network.trr.excluded-domains"
+            ],
+            "value_type": "object",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.8",
+            "policy_key": "Cookies",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Cookies",
+            "plist_key_path": "Cookies",
+            "pref_name": "network.cookie.cookieBehavior",
+            "equivalent_pref_names": [
+                "network.cookie.lifetimePolicy"
+            ],
+            "value_type": "object",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.9",
+            "policy_key": "DisableDeveloperTools",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableDeveloperTools",
+            "plist_key_path": "DisableDeveloperTools",
+            "pref_name": "devtools.policy.disabled",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.10",
+            "policy_key": "Proxy",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Proxy",
+            "plist_key_path": "Proxy",
+            "pref_name": "network.proxy.type",
+            "value_type": "object",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.11",
+            "policy_key": "DisableFormHistory",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableFormHistory",
+            "plist_key_path": "DisableFormHistory",
+            "pref_name": "browser.formfill.enable",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.12",
+            "policy_key": "RuntimeProcessFlags",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "",
+            "plist_key_path": "",
+            "pref_name": "",
+            "value_type": "none",
+            "mode": "RUNTIME",
+            "runtime_source": "/bin/ps -axo pid=,comm=,command= filtered by process_pattern",
+            "notes": "Runtime-only control; neither policy channel carries evidence for it."
+        },
+        {
+            "control_id": "1.13",
+            "policy_key": "DisablePocket",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisablePocket",
+            "plist_key_path": "DisablePocket",
+            "pref_name": "extensions.pocket.enabled",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.14",
+            "policy_key": "DisableFirefoxStudies",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableFirefoxStudies",
+            "plist_key_path": "DisableFirefoxStudies",
+            "pref_name": "app.shield.optoutstudies.enabled",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.15",
+            "policy_key": "network.captive-portal-service.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.network.captive-portal-service.enabled",
+            "plist_key_path": "Preferences.network.captive-portal-service.enabled",
+            "pref_name": "network.captive-portal-service.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.16",
+            "policy_key": "signon.management.page.breach-alerts.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.signon.management.page.breach-alerts.enabled",
+            "plist_key_path": "Preferences.signon.management.page.breach-alerts.enabled",
+            "pref_name": "signon.management.page.breach-alerts.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.17",
+            "policy_key": "DisableFeedbackCommands",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableFeedbackCommands",
+            "plist_key_path": "DisableFeedbackCommands",
+            "pref_name": "",
+            "value_type": "boolean",
+            "mode": "POLICY",
+            "notes": "Removes menu commands; no preference equivalent, so only the managed channels can prove it."
+        },
+        {
+            "control_id": "1.18",
+            "policy_key": "DisableProfileImport",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DisableProfileImport",
+            "plist_key_path": "DisableProfileImport",
+            "pref_name": "",
+            "value_type": "boolean",
+            "mode": "POLICY",
+            "notes": "Feature disallow with no preference equivalent."
+        },
+        {
+            "control_id": "1.19",
+            "policy_key": "extensions.formautofill.addresses.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.extensions.formautofill.addresses.enabled",
+            "plist_key_path": "Preferences.extensions.formautofill.addresses.enabled",
+            "pref_name": "extensions.formautofill.addresses.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.20",
+            "policy_key": "extensions.formautofill.creditCards.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.extensions.formautofill.creditCards.enabled",
+            "plist_key_path": "Preferences.extensions.formautofill.creditCards.enabled",
+            "pref_name": "extensions.formautofill.creditCards.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.21",
+            "policy_key": "EnableTrackingProtection",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.EnableTrackingProtection",
+            "plist_key_path": "EnableTrackingProtection",
+            "pref_name": "privacy.trackingprotection.enabled",
+            "equivalent_pref_names": [
+                "privacy.trackingprotection.pbmode.enabled",
+                "privacy.trackingprotection.cryptomining.enabled",
+                "privacy.trackingprotection.fingerprinting.enabled"
+            ],
+            "value_type": "object",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.22",
+            "policy_key": "network.cookie.cookieBehavior",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.network.cookie.cookieBehavior",
+            "plist_key_path": "Preferences.network.cookie.cookieBehavior",
+            "pref_name": "network.cookie.cookieBehavior",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.23",
+            "policy_key": "network.cookie.lifetimePolicy",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.network.cookie.lifetimePolicy",
+            "plist_key_path": "Preferences.network.cookie.lifetimePolicy",
+            "pref_name": "network.cookie.lifetimePolicy",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.24",
+            "policy_key": "permissions.default.clipboard",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.permissions.default.clipboard",
+            "plist_key_path": "Preferences.permissions.default.clipboard",
+            "pref_name": "permissions.default.clipboard",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.25",
+            "policy_key": "permissions.default.camera",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.permissions.default.camera",
+            "plist_key_path": "Preferences.permissions.default.camera",
+            "pref_name": "permissions.default.camera",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.26",
+            "policy_key": "permissions.default.microphone",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.permissions.default.microphone",
+            "plist_key_path": "Preferences.permissions.default.microphone",
+            "pref_name": "permissions.default.microphone",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.27",
+            "policy_key": "permissions.default.geo",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.permissions.default.geo",
+            "plist_key_path": "Preferences.permissions.default.geo",
+            "pref_name": "permissions.default.geo",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.28",
+            "policy_key": "permissions.default.desktop-notification",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.permissions.default.desktop-notification",
+            "plist_key_path": "Preferences.permissions.default.desktop-notification",
+            "pref_name": "permissions.default.desktop-notification",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.29",
+            "policy_key": "media.autoplay.default",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.media.autoplay.default",
+            "plist_key_path": "Preferences.media.autoplay.default",
+            "pref_name": "media.autoplay.default",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.30",
+            "policy_key": "media.peerconnection.ice.default_address_only",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.media.peerconnection.ice.default_address_only",
+            "plist_key_path": "Preferences.media.peerconnection.ice.default_address_only",
+            "pref_name": "media.peerconnection.ice.default_address_only",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.31",
+            "policy_key": "dom.security.https_only_mode",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.dom.security.https_only_mode",
+            "plist_key_path": "Preferences.dom.security.https_only_mode",
+            "pref_name": "dom.security.https_only_mode",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.32",
+            "policy_key": "security.tls.version.min",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.security.tls.version.min",
+            "plist_key_path": "Preferences.security.tls.version.min",
+            "pref_name": "security.tls.version.min",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.33",
+            "policy_key": "security.OCSP.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.security.OCSP.enabled",
+            "plist_key_path": "Preferences.security.OCSP.enabled",
+            "pref_name": "security.OCSP.enabled",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.34",
+            "policy_key": "browser.xul.error_pages.expert_bad_cert",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.browser.xul.error_pages.expert_bad_cert",
+            "plist_key_path": "Preferences.browser.xul.error_pages.expert_bad_cert",
+            "pref_name": "browser.xul.error_pages.expert_bad_cert",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.35",
+            "policy_key": "browser.sessionstore.resume_from_crash",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.browser.sessionstore.resume_from_crash",
+            "plist_key_path": "Preferences.browser.sessionstore.resume_from_crash",
+            "pref_name": "browser.sessionstore.resume_from_crash",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.36",
+            "policy_key": "Homepage",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Homepage",
+            "plist_key_path": "Homepage",
+            "pref_name": "browser.startup.homepage",
+            "value_type": "object",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.37",
+            "policy_key": "SearchEngines",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.SearchEngines",
+            "plist_key_path": "SearchEngines",
+            "pref_name": "",
+            "value_type": "object",
+            "mode": "POLICY",
+            "notes": "Honoured by Firefox ESR only. On a rapid-release build the key can be deployed and read back from either channel while having no effect, so presence alone is not enforcement."
+        },
+        {
+            "control_id": "1.38",
+            "policy_key": "BlockAboutConfig",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.BlockAboutConfig",
+            "plist_key_path": "BlockAboutConfig",
+            "pref_name": "",
+            "value_type": "boolean",
+            "mode": "POLICY",
+            "notes": "Blocks an about: page; no preference equivalent."
+        },
+        {
+            "control_id": "1.39",
+            "policy_key": "devtools.debugger.remote-enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.devtools.debugger.remote-enabled",
+            "plist_key_path": "Preferences.devtools.debugger.remote-enabled",
+            "pref_name": "devtools.debugger.remote-enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.40",
+            "policy_key": "security.enterprise_roots.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.security.enterprise_roots.enabled",
+            "plist_key_path": "Preferences.security.enterprise_roots.enabled",
+            "pref_name": "security.enterprise_roots.enabled",
+            "value_type": "boolean",
+            "mode": "PREF",
+            "notes": "On macOS this pref imports roots from the system keychain; it is also set indirectly by the Certificates.ImportEnterpriseRoots policy."
+        },
+        {
+            "control_id": "1.41",
+            "policy_key": "datareporting.healthreport.uploadEnabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.datareporting.healthreport.uploadEnabled",
+            "plist_key_path": "Preferences.datareporting.healthreport.uploadEnabled",
+            "pref_name": "datareporting.healthreport.uploadEnabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.42",
+            "policy_key": "browser.urlbar.suggest.searches",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.browser.urlbar.suggest.searches",
+            "plist_key_path": "Preferences.browser.urlbar.suggest.searches",
+            "pref_name": "browser.urlbar.suggest.searches",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.43",
+            "policy_key": "DownloadRestrictions",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "",
+            "plist_key_path": "",
+            "pref_name": "",
+            "value_type": "none",
+            "mode": "POLICY",
+            "macos_supported": false,
+            "unsupported_result": "NOT_ASSESSED",
+            "unsupported_reason": "DownloadRestrictions is not part of the Firefox enterprise policy schema, so neither policies.json nor the preference domain can carry it. Firefox governs download handling through PromptForDownloadLocation, DownloadDirectory and the browser.download.* preferences."
+        },
+        {
+            "control_id": "1.44",
+            "policy_key": "browser.download.useDownloadDir",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.browser.download.useDownloadDir",
+            "plist_key_path": "Preferences.browser.download.useDownloadDir",
+            "pref_name": "browser.download.useDownloadDir",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.45",
+            "policy_key": "extensions.legacy.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.extensions.legacy.enabled",
+            "plist_key_path": "Preferences.extensions.legacy.enabled",
+            "pref_name": "extensions.legacy.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.46",
+            "policy_key": "extensions.update.url",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.extensions.update.url",
+            "plist_key_path": "Preferences.extensions.update.url",
+            "pref_name": "extensions.update.url",
+            "value_type": "string",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.47",
+            "policy_key": "signon.autofillForms",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.signon.autofillForms",
+            "plist_key_path": "Preferences.signon.autofillForms",
+            "pref_name": "signon.autofillForms",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.48",
+            "policy_key": "security.mixed_content.block_active_content",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.security.mixed_content.block_active_content",
+            "plist_key_path": "Preferences.security.mixed_content.block_active_content",
+            "pref_name": "security.mixed_content.block_active_content",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.49",
+            "policy_key": "network.http.referer.XOriginPolicy",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.network.http.referer.XOriginPolicy",
+            "plist_key_path": "Preferences.network.http.referer.XOriginPolicy",
+            "pref_name": "network.http.referer.XOriginPolicy",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.50",
+            "policy_key": "EnableTrackingProtection",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.EnableTrackingProtection",
+            "plist_key_path": "EnableTrackingProtection",
+            "pref_name": "privacy.trackingprotection.enabled",
+            "equivalent_pref_names": [
+                "privacy.trackingprotection.pbmode.enabled",
+                "privacy.trackingprotection.cryptomining.enabled",
+                "privacy.trackingprotection.fingerprinting.enabled"
+            ],
+            "value_type": "object",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.51",
+            "policy_key": "network.protocol-handler.external-default",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.network.protocol-handler.external-default",
+            "plist_key_path": "Preferences.network.protocol-handler.external-default",
+            "pref_name": "network.protocol-handler.external-default",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.52",
+            "policy_key": "DontCheckDefaultBrowser",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.DontCheckDefaultBrowser",
+            "plist_key_path": "DontCheckDefaultBrowser",
+            "pref_name": "browser.shell.checkDefaultBrowser",
+            "value_type": "boolean",
+            "mode": "POLICY"
+        },
+        {
+            "control_id": "1.53",
+            "policy_key": "media.getusermedia.screensharing.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.media.getusermedia.screensharing.enabled",
+            "plist_key_path": "Preferences.media.getusermedia.screensharing.enabled",
+            "pref_name": "media.getusermedia.screensharing.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.54",
+            "policy_key": "privacy.file_unique_origin",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.privacy.file_unique_origin",
+            "plist_key_path": "Preferences.privacy.file_unique_origin",
+            "pref_name": "privacy.file_unique_origin",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.55",
+            "policy_key": "network.http.http3.enable",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.network.http.http3.enable",
+            "plist_key_path": "Preferences.network.http.http3.enable",
+            "pref_name": "network.http.http3.enable",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.56",
+            "policy_key": "security.cert_pinning.enforcement_level",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.security.cert_pinning.enforcement_level",
+            "plist_key_path": "Preferences.security.cert_pinning.enforcement_level",
+            "pref_name": "security.cert_pinning.enforcement_level",
+            "value_type": "integer",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.57",
+            "policy_key": "signon.privateBrowsingCapture.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.signon.privateBrowsingCapture.enabled",
+            "plist_key_path": "Preferences.signon.privateBrowsingCapture.enabled",
+            "pref_name": "signon.privateBrowsingCapture.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.58",
+            "policy_key": "",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "",
+            "plist_key_path": "",
+            "pref_name": "",
+            "value_type": "none",
+            "mode": "MANUAL",
+            "notes": "Manual review control; no on-box evidence exists in either macOS channel."
+        },
+        {
+            "control_id": "1.59",
+            "policy_key": "app.normandy.enabled",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "policies.Preferences.app.normandy.enabled",
+            "plist_key_path": "Preferences.app.normandy.enabled",
+            "pref_name": "app.normandy.enabled",
+            "value_type": "boolean",
+            "mode": "PREF"
+        },
+        {
+            "control_id": "1.60",
+            "policy_key": "",
+            "preference_domain": "org.mozilla.firefox",
+            "policies_json_path": "",
+            "plist_key_path": "",
+            "pref_name": "",
+            "value_type": "none",
+            "mode": "MANUAL",
+            "notes": "Manual review control; no on-box evidence exists in either macOS channel."
+        }
+    ]
+}

@@ -11,7 +11,15 @@ param(
     [int]$FirefoxMaxPolicyOnly = 0,
     [int]$FirefoxMaxManual = 2,
     [int]$FirefoxMaxNoPolicy = 2,
-    [int]$FirefoxMinDirect = 76
+    [int]$FirefoxMinDirect = 76,
+    [int]$ChromeMacosMaxPolicyOnly = 0,
+    [int]$ChromeMacosMaxManual = 0,
+    [int]$ChromeMacosMaxNoPolicy = 0,
+    [int]$ChromeMacosMinDirect = 0,
+    [int]$FirefoxMacosMaxPolicyOnly = 0,
+    [int]$FirefoxMacosMaxManual = 0,
+    [int]$FirefoxMacosMaxNoPolicy = 0,
+    [int]$FirefoxMacosMinDirect = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -72,6 +80,18 @@ foreach ($browser in $Browsers) {
             Assert-True ($manual -le $FirefoxMaxManual) "firefox_verified.json: MANUAL regression ($manual > $FirefoxMaxManual)"
             Assert-True ($noPolicy -le $FirefoxMaxNoPolicy) "firefox_verified.json: no_resolvable_policy_key regression ($noPolicy > $FirefoxMaxNoPolicy)"
             Assert-True ($direct -ge $FirefoxMinDirect) "firefox_verified.json: DIRECT regression ($direct < $FirefoxMinDirect)"
+        }
+        'chrome_macos' {
+            Assert-True ($policyOnly -le $ChromeMacosMaxPolicyOnly) "chrome_macos_verified.json: POLICY_ONLY regression ($policyOnly > $ChromeMacosMaxPolicyOnly)"
+            Assert-True ($manual -le $ChromeMacosMaxManual) "chrome_macos_verified.json: MANUAL regression ($manual > $ChromeMacosMaxManual)"
+            Assert-True ($noPolicy -le $ChromeMacosMaxNoPolicy) "chrome_macos_verified.json: no_resolvable_policy_key regression ($noPolicy > $ChromeMacosMaxNoPolicy)"
+            Assert-True ($direct -ge $ChromeMacosMinDirect) "chrome_macos_verified.json: DIRECT regression ($direct < $ChromeMacosMinDirect)"
+        }
+        'firefox_macos' {
+            Assert-True ($policyOnly -le $FirefoxMacosMaxPolicyOnly) "firefox_macos_verified.json: POLICY_ONLY regression ($policyOnly > $FirefoxMacosMaxPolicyOnly)"
+            Assert-True ($manual -le $FirefoxMacosMaxManual) "firefox_macos_verified.json: MANUAL regression ($manual > $FirefoxMacosMaxManual)"
+            Assert-True ($noPolicy -le $FirefoxMacosMaxNoPolicy) "firefox_macos_verified.json: no_resolvable_policy_key regression ($noPolicy > $FirefoxMacosMaxNoPolicy)"
+            Assert-True ($direct -ge $FirefoxMacosMinDirect) "firefox_macos_verified.json: DIRECT regression ($direct < $FirefoxMacosMinDirect)"
         }
     }
 

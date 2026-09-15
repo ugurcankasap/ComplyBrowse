@@ -39,6 +39,15 @@ $report  = Get-Content $InputFile -Raw -Encoding UTF8 | ConvertFrom-Json
 $results = @($report.results)
 
 $validVerdicts = @('PASS', 'PASS_NOT_ENFORCED', 'FAIL', 'NOT_ASSESSED')
+$validRootCauseCodes = @(
+    'RC_NONE',
+    'RC_POLICY_NOT_DEPLOYED', 'RC_POLICY_VALUE_MISMATCH',
+    'RC_POLICY_ABSENT_USER_MISMATCH', 'RC_CONTROL_UNCONFIGURED',
+    'RC_RUNTIME_CONTRADICTION', 'RC_USER_VALUE_MISMATCH',
+    'RC_USER_SETTING_MISSING', 'RC_MANAGEMENT_CHANNEL_UNREADABLE',
+    'RC_TCC_PERMISSION_MISSING', 'RC_PRIVILEGE_INSUFFICIENT',
+    'RC_UNCLASSIFIED_FAIL'
+)
 $findings = @()
 
 # Controls that are legitimately satisfiable through more than one policy key
@@ -226,6 +235,11 @@ foreach ($r in $results) {
     if ([string]::IsNullOrWhiteSpace([string]$r.verdict_reasoning)) {
         Add-Finding -Code 'A6_NO_REASONING' -Severity 'WARNING' -TestId ([string]$r.test_id) `
             -Detail 'Verdict has no reasoning text; the finding cannot be defended in a review.'
+    }
+    $rootCauseCode = [string]$r.root_cause_code
+    if (-not [string]::IsNullOrWhiteSpace($rootCauseCode) -and $rootCauseCode -notin $validRootCauseCodes) {
+        Add-Finding -Code 'A6_UNKNOWN_ROOT_CAUSE' -Severity 'BLOCKING' -TestId ([string]$r.test_id) `
+            -Detail "Root-cause code '$rootCauseCode' is outside the declared taxonomy."
     }
 }
 

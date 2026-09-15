@@ -210,7 +210,7 @@ class ExtensionSecurityTestSuite:
     def run_all_tests(self) -> Dict[str, Any]:
         """Run all tests"""
         print(f"\n{'='*60}")
-        print(f"Cookie Session Harvesting tests running...")
+        print("Cookie Session Harvesting tests running...")
         print(f"Browser: {self.browser}")
         print(f"{'='*60}\n")
         
@@ -223,7 +223,7 @@ class ExtensionSecurityTestSuite:
         summary = self.logger.get_summary()
         
         print(f"\n{'='*60}")
-        print(f"Package Summary:")
+        print("Package Summary:")
         print(f"  Total Tests: {summary['total']}")
         print(f"  Passed: {summary['passed']} ")
         print(f"  Failed: {summary['failed']} ")

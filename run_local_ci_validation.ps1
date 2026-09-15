@@ -123,6 +123,18 @@ function Invoke-PipInstall {
 
 Set-Location $PSScriptRoot
 
+Invoke-Step -Name 'PowerShell lint' -Action {
+    if (-not (Get-Command Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue)) {
+        throw 'PSScriptAnalyzer is required. Install-Module PSScriptAnalyzer -Scope CurrentUser'
+    }
+
+    $files = Get-ChildItem -Path . -Recurse -Filter *.ps1 -File |
+        Where-Object { $_.FullName -notmatch '[\\/](artifacts|reports|releases|\.git)[\\/]' }
+    $results = $files | Invoke-ScriptAnalyzer -Settings (Join-Path $PSScriptRoot 'PSScriptAnalyzerSettings.psd1')
+    $results | Format-Table -AutoSize
+    if ($results) { throw 'PowerShell lint found errors or warnings.' }
+}
+
 Invoke-Step -Name 'Python install dependencies' -Action {
     if ($SkipPythonInstall) {
         Write-Host 'Skipping pip install step by request.' -ForegroundColor Yellow
@@ -134,7 +146,11 @@ Invoke-Step -Name 'Python install dependencies' -Action {
 }
 
 Invoke-Step -Name 'Python syntax check' -Action {
-    Invoke-Python -CommandParts @('-m', 'compileall', 'browser_security_agent.py', 'tests', 'qa_tests')
+    Invoke-Python -CommandParts @('-m', 'compileall', 'browser_security_agent.py', 'tests', 'qa_tests', 'tools')
+}
+
+Invoke-Step -Name 'Python lint' -Action {
+    Invoke-Python -CommandParts @('-m', 'ruff', 'check', 'browser_security_agent.py', 'macos_local_report.py', 'tests', 'qa_tests', 'tools')
 }
 
 Invoke-Step -Name 'Python contract tests' -Action {

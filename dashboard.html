@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browser Security - Compliance Dashboard</title>
+    <title>Redirecting to ComplyBrowse Report</title>
+    <meta http-equiv="refresh" content="0; url=integrated_report.html">
+    <script>
+        window.location.replace(`integrated_report.html${window.location.hash}`);
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
@@ -242,6 +246,12 @@
             .header {
                 padding: 20px;
             }
+
+            .platform-note {
+                color: #57606a;
+                font-size: 12px;
+                margin: 12px 0 0;
+            }
         }
     </style>
 </head>
@@ -259,6 +269,7 @@
                     <span class="browser-mark" aria-label="Edge report">ED</span>
                 </div>
                 <h2>Microsoft Edge</h2>
+                <p class="platform-note" id="edge-platforms">Platform: Windows</p>
                 
                 <div class="stat-row">
                     <div class="stat-item">
@@ -295,6 +306,7 @@
                     <span class="browser-mark" aria-label="Chrome report">CH</span>
                 </div>
                 <h2>Google Chrome</h2>
+                <p class="platform-note" id="chrome-platforms">Platform: Windows and macOS</p>
                 
                 <div class="stat-row">
                     <div class="stat-item">
@@ -331,6 +343,7 @@
                     <span class="browser-mark" aria-label="Firefox report">FF</span>
                 </div>
                 <h2>Mozilla Firefox</h2>
+                <p class="platform-note" id="firefox-platforms">Platform: Windows and macOS</p>
                 
                 <div class="stat-row">
                     <div class="stat-item">
@@ -360,6 +373,37 @@
 
                 <button class="cta-button">Open Report →</button>
             </div>
+
+            <!-- SAFARI CARD -->
+            <div class="stat-card safari" onclick="goToReport('safari')">
+                <div class="browser-icon">
+                    <span class="browser-mark" aria-label="Safari macOS report">SF</span>
+                </div>
+                <h2>Apple Safari</h2>
+                <p class="platform-note">Platform: macOS only, TCC-gated</p>
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Tests</div>
+                        <div class="stat-value" id="safari-total">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">PASS</div>
+                        <div class="stat-value pass" id="safari-pass">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">FAIL</div>
+                        <div class="stat-value fail" id="safari-fail">0</div>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Compliance Score</div>
+                        <div class="stat-value score" id="safari-score">0%</div>
+                    </div>
+                </div>
+                <div class="score-bar"><div class="score-bar-fill" id="safari-bar" style="width: 0%"></div></div>
+                <button class="cta-button">Open Report →</button>
+            </div>
         </div>
 
         <div class="footer">
@@ -371,11 +415,11 @@
     <script>
         // Load actual data from verified JSON files
         async function loadDashboardData() {
-            const browsers = ['edge', 'chrome', 'firefox'];
+            const browsers = ['edge', 'chrome', 'firefox', 'safari'];
             
             for (const browser of browsers) {
                 try {
-                    const verFile = `${browser}_verified.json`;
+                    const verFile = browser === 'safari' ? 'safari_macos_verified.json' : `${browser}_verified.json`;
                     const response = await fetch(verFile);
                     const data = await response.json();
 
@@ -388,6 +432,13 @@
                         document.getElementById(`${browser}-fail`).textContent = summary.fail || 0;
                         document.getElementById(`${browser}-score`).textContent = score + '%';
                         document.getElementById(`${browser}-bar`).style.width = score + '%';
+                    }
+
+                    if (browser !== 'edge' && browser !== 'safari') {
+                        const macResponse = await fetch(`${browser}_macos_verified.json`);
+                        if (macResponse.ok) {
+                            document.getElementById(`${browser}-platforms`).textContent = 'Platforms: Windows and macOS';
+                        }
                     }
                 } catch (error) {
                     console.warn(`Could not load ${browser} data:`, error);

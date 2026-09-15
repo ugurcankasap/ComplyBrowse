@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "browser": "Safari",
+  "platform": "macOS",
+  "benchmark_reference": "CIS Apple macOS Benchmark; Safari controls are macOS platform controls, not an independent Safari CIS benchmark.",
+  "preference_domain": "com.apple.Safari",
+  "channels": {
+    "managed": {
+      "root": "/Library/Managed Preferences",
+      "domain": "com.apple.Safari",
+      "layer": "L1",
+      "enforced": true
+    },
+    "user": {
+      "preference_root": "~/Library/Containers/com.apple.Safari/Data/Library/Preferences",
+      "safari_root": "~/Library/Safari",
+      "layer": "L2",
+      "enforced": false,
+      "tcc_required": true
+    },
+    "runtime": {
+      "layer": "L3",
+      "enabled": false,
+      "reason": "Safari command-line arguments do not provide meaningful policy arbiter evidence."
+    }
+  },
+  "controls": [
+    {"control_id":"SAF-001","policy_key":"AllowPrivateBrowsing","expected":false,"value_type":"boolean","macos_supported":true},
+    {"control_id":"SAF-002","policy_key":"AutoFillPasswords","expected":false,"value_type":"boolean","macos_supported":true},
+    {"control_id":"SAF-003","policy_key":"ExtensionInstallAllowlist","expected":null,"value_type":"unsupported","macos_supported":false,"unsupported_reason":"Safari extension inventory is not a stable MDM-comparable control on current macOS releases."},
+    {"control_id":"SAF-004","policy_key":"ExtensionPermissionPolicy","expected":null,"value_type":"unsupported","macos_supported":false,"unsupported_reason":"Safari extension permission state is not a stable MDM-comparable control on current macOS releases."},
+    {"control_id":"SAF-005","policy_key":"AutoOpenSafeDownloads","expected":false,"value_type":"boolean","macos_supported":true},
+    {"control_id":"SAF-006","policy_key":"AllowPopups","expected":false,"value_type":"boolean","macos_supported":true},
+    {"control_id":"SAF-007","policy_key":"AllowJavaScript","expected":true,"value_type":"boolean","macos_supported":true},
+    {"control_id":"SAF-008","policy_key":"WebContentFilter","expected":null,"value_type":"presence","macos_supported":true},
+    {"control_id":"SAF-009","policy_key":"com.apple.Safari","expected":null,"value_type":"presence","macos_supported":true}
+  ]
+}

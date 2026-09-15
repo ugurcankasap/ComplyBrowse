@@ -42,6 +42,26 @@ This project contains independent code and references to third-party products an
      - https://learn.microsoft.com/en-us/deployedge/
      - https://chromedriver.chromium.org/
 
+4. Apple macOS Platform References
+    ================================
+    The macOS collectors use public platform interfaces and documented file
+    locations for preference domains, application bundles, process arguments and
+    TCC-protected access behavior:
+       - https://developer.apple.com/documentation/foundation/preferences
+       - https://support.apple.com/guide/security/controlling-app-access-to-files-and-folders-secddd1d86a6/web
+       - https://developer.apple.com/documentation/devicemanagement
+
+    These links are references only. Apple documentation and trademarks remain
+    the property of Apple Inc.; no Apple source text is distributed.
+
+5. CIS Apple macOS Benchmark
+   ==========================
+   Safari controls in `safari_controls.txt` are platform controls referenced to
+   the CIS Apple macOS Benchmark. This project does not claim that an
+   independent Safari CIS benchmark exists and does not distribute CIS
+   benchmark text or licensed benchmark files.
+   For licensed benchmark material, see: https://www.cisecurity.org/benchmark/apple_os
+
 THIRD-PARTY PYTHON DEPENDENCIES
 ================================
 

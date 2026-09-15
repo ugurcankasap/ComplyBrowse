@@ -1,0 +1,4 @@
+{
+  "access_denied": true,
+  "root_cause": "RC_TCC_PERMISSION_MISSING"
+}

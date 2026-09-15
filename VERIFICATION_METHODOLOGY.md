@@ -26,11 +26,30 @@ setting can reach an endpoint through several channels:
 | MDM CSP (OMA-URI) | `HKLM\SOFTWARE\Microsoft\PolicyManager\current\device\<area>` and `...\providers\<enrollment>\default\Device` | Yes |
 | Management agents (ManageEngine, ConfigMgr, Workspace ONE, Ivanti, Tanium) | same registry policy path | Yes |
 | Firefox enterprise policy file | `<install dir>\distribution\policies.json` | Yes |
+| Firefox macOS preference domain (configuration profile) | `/Library/Managed Preferences/org.mozilla.firefox.plist` | Yes |
+| Chrome macOS preference domain (configuration profile) | `/Library/Managed Preferences/com.google.Chrome.plist` | Yes, when readable |
+| Chrome/Firefox macOS user preferences | `~/Library/Preferences` and browser profile files | No, user-revertible |
+| macOS runtime process arguments | `ps` command-line evidence | Runtime only |
 | Browser-native cloud management (Chrome Browser Cloud Management, Microsoft Edge management service) | fetched over the network at runtime, not persisted | **No** |
 
 `management_channel.ps1` detects which of these channels is active on the
 endpoint and records the result in the `management_context` block of every
 report.
+
+### 2.5 macOS management and TCC constraints
+
+The macOS collectors read managed preference domains, browser bundle policy
+files, user preference files, browser profiles and live process arguments. A
+value under `/Library/Managed Preferences` is the L1 managed signal; user
+domains and profile files are L2 evidence and are never treated as enforced.
+Every result carries its platform and source type so Windows and macOS results
+with the same `control_id` remain separate in reports.
+
+Transparency, Consent, and Control (TCC) can deny access even when a path
+exists. An access denial is not interpreted as an absent policy: the affected
+control returns `NOT_ASSESSED` with root cause `RC_TCC_PERMISSION_MISSING`.
+GitHub-hosted macOS runners are not enrolled in the project's MDM and therefore
+are not used for live L1 verification; CI runs only synthetic fixture tests.
 
 ### 2.1 Provenance is attributed, never guessed
 
@@ -51,7 +70,7 @@ naming a channel it cannot prove.
 ### 2.2 Unreadable channels suppress false failures
 
 Absence of evidence is treated as evidence of absence **only when every active
-channel was readable**. Three conditions mark evidence as incomplete, and each
+channel was readable**. The following conditions mark evidence as incomplete, and each
 of them converts "policy not found" from `FAIL` into `NOT_ASSESSED` with root
 cause `RC_MANAGEMENT_CHANNEL_UNREADABLE`:
 
@@ -60,6 +79,8 @@ cause `RC_MANAGEMENT_CHANNEL_UNREADABLE`:
 | Browser enrolled in cloud management | Enrollment token present; values never reach the registry |
 | Policy store not readable in this security context | Enumeration of the policy containers raises an access error |
 | Unsupported platform | Non-Windows host; the registry collector cannot apply at all |
+| macOS TCC permission not granted | A required evidence file returns an access denial; affected controls use `RC_TCC_PERMISSION_MISSING` |
+| macOS configuration-profile inventory requires root | `profiles -C -o stdout-xml` cannot run without effective uid 0; affected controls use `RC_PRIVILEGE_INSUFFICIENT` |
 
 On an unsupported platform every control is returned `NOT_ASSESSED` rather than
 failing against paths that cannot exist. The suppression count is published in
@@ -88,6 +109,59 @@ profile that owns a `Preferences` file is scanned (Default first), and all
 Firefox profiles listed in `profiles.ini` are scanned. Registry value names are
 matched case-insensitively, because policy keys arrive from CIS text in mixed
 casing.
+
+### 2.4 Firefox on macOS: two policy channels, one winner
+
+Firefox on macOS accepts enterprise policy from two channels, and
+[firefox_macos_policy_map.json](firefox_macos_policy_map.json) declares both for
+every control:
+
+| Channel | Where the value lands | Enforced |
+| --- | --- | --- |
+| `POLICIES_JSON` | `<Firefox.app>/Contents/Resources/distribution/policies.json`, under the `policies` root key | Yes |
+| `PLIST` | The `org.mozilla.firefox` preference domain, delivered by MDM into `/Library/Managed Preferences` | Yes, in the managed scope |
+
+**Precedence rule: the plist channel wins, and it wins as a whole.** Firefox
+chooses one policy provider per launch instead of merging them. The macOS
+preference-domain provider is offered first and is accepted when
+`EnterprisePoliciesEnabled` is `true` in `org.mozilla.firefox`. Once accepted,
+every policy value comes from the preference domain and `policies.json` is not
+read at all - including for keys the plist does not define. Only when the gate
+key is absent or `false` does the `policies.json` provider apply.
+
+Three consequences are load-bearing for the verdict:
+
+1. **Conflicts are resolved, never averaged.** When both channels define a
+   control with different values, the effective value is the plist value. The
+   result records `effective_channel`, sets `channel_conflict`, and keeps the
+   losing value as context only.
+2. **A control defined only in the losing channel is not configured.** With the
+   gate active, a hardening key that exists solely in `policies.json` is
+   reported as a deployment defect - configured but not in force - and never as
+   compliance.
+3. **An unreadable gate is not a failure.** If `EnterprisePoliciesEnabled`
+   cannot be read, the winning provider is unknown, so the control is returned
+   `NOT_ASSESSED` with root cause `RC_TCC_PERMISSION_MISSING` rather than being
+   failed against a channel that may not be the effective one.
+
+Within the plist channel, `/Library/Managed Preferences` shadows
+`/Library/Preferences` and `~/Library/Preferences`, matching CFPreferences
+resolution. Only the managed scope proves enforcement; the lower scopes are
+locally writable and are treated as L2 user-level evidence.
+
+Discovery for this browser is declared as data, not embedded in the collector.
+The map lists candidate application bundles (including resolution of the bundle
+from the running process, so a non-standard install location is still found),
+the bundle-relative path to `policies.json`, the candidate `profiles.ini`
+locations, and the preference-domain roots. Every profile listed in
+`profiles.ini` is scanned - default profiles first, but not only the default -
+and each collected value carries the bundle, profile and file it came from, so
+no finding depends on an unstated assumption about which profile was read.
+
+This section describes the macOS map only. The Windows Firefox map
+[firefox_cis_policy_map.json](firefox_cis_policy_map.json) is unchanged and
+remains the single source for `control_id` and `policy_key`; the macOS map
+carries those values over verbatim and adds channel information alone.
 
 ## 3. Evidence layers
 

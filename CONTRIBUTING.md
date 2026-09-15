@@ -199,6 +199,7 @@ Browser_Security/
 │   └── test_framework.py          # Test utilities
 ├── qa_tests/                       # Contract/regression tests
 ├── config.yaml                     # Test package configuration
+├── lib/common.ps1                 # Shared runner helpers (dot-sourced)
 ├── *_test_runner.ps1              # Browser-specific runner scripts
 ├── apply_verification.ps1         # Verification verdict layer
 ├── verify_value_based.ps1         # Layer 1/2/3 evidence collectors

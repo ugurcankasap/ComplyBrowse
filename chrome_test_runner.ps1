@@ -10,368 +10,11 @@ $script:RunId = Get-Date -Format "yyyyMMdd_HHmmss"
 $script:ArtifactsRoot = Join-Path $PSScriptRoot "artifacts"
 $script:ArtifactsRunDir = ""
 
-function Ensure-Directory {
-    param([string]$Path)
-    if ([string]::IsNullOrWhiteSpace($Path)) { return }
-    if (-not (Test-Path $Path)) {
-        New-Item -ItemType Directory -Path $Path -Force | Out-Null
-    }
+$script:CommonLibraryPath = Join-Path $PSScriptRoot 'lib/common.ps1'
+if (-not (Test-Path -LiteralPath $script:CommonLibraryPath)) {
+    throw "Shared runner library not found: $script:CommonLibraryPath"
 }
-
-function Get-SafePathToken {
-    param([string]$Value)
-    if ([string]::IsNullOrWhiteSpace($Value)) { return "unknown" }
-    return (($Value -replace '[^A-Za-z0-9._-]', '_').Trim('_'))
-}
-
-function Initialize-ArtifactStore {
-    Ensure-Directory -Path $script:ArtifactsRoot
-    $script:ArtifactsRunDir = Join-Path $script:ArtifactsRoot $script:RunId
-    Ensure-Directory -Path $script:ArtifactsRunDir
-}
-
-function Write-TestArtifact {
-    param(
-        [string]$TestId,
-        [string]$ArtifactName,
-        [object]$Data
-    )
-
-    if ([string]::IsNullOrWhiteSpace($script:ArtifactsRunDir)) {
-        Initialize-ArtifactStore
-    }
-
-    $safeTestId = Get-SafePathToken -Value $TestId
-    $safeName = Get-SafePathToken -Value $ArtifactName
-    $testDir = Join-Path $script:ArtifactsRunDir $safeTestId
-    Ensure-Directory -Path $testDir
-
-    $filePath = Join-Path $testDir ("{0}.json" -f $safeName)
-    ($Data | ConvertTo-Json -Depth 12) | Out-File -FilePath $filePath -Encoding UTF8
-
-    $relativePath = "artifacts/$($script:RunId)/$safeTestId/$safeName.json"
-    return $relativePath
-}
-
-function Get-ExecutableVersion {
-    param(
-        [string]$BrowserExecutableName,
-        [string[]]$Candidates,
-        [string[]]$LocalAppDataFallback = @()
-    )
-
-    $candidatePool = @($Candidates + $LocalAppDataFallback)
-    try {
-        $cmd = Get-Command $BrowserExecutableName -ErrorAction SilentlyContinue
-        if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.Source)) {
-            $candidatePool += [string]$cmd.Source
-        }
-    } catch {}
-
-    $appPathKeys = @(
-        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$BrowserExecutableName",
-        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\$BrowserExecutableName",
-        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$BrowserExecutableName"
-    )
-    foreach ($k in $appPathKeys) {
-        try {
-            if (Test-Path $k) {
-                $v = (Get-ItemProperty -Path $k -ErrorAction SilentlyContinue).'(default)'
-                if (-not [string]::IsNullOrWhiteSpace([string]$v)) {
-                    $candidatePool += [string]$v
-                }
-            }
-        } catch {}
-    }
-
-    $candidatePool = @($candidatePool | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique)
-    foreach ($candidate in $candidatePool) {
-        if (-not (Test-Path $candidate)) {
-            continue
-        }
-        try {
-            $vi = (Get-Item $candidate).VersionInfo
-            $version = [string]$vi.ProductVersion
-            if ([string]::IsNullOrWhiteSpace($version)) {
-                $version = [string]$vi.FileVersion
-            }
-            if (-not [string]::IsNullOrWhiteSpace($version)) {
-                return $version
-            }
-        } catch {}
-    }
-
-    return "NOT_FOUND"
-}
-
-function Get-BrowserExecutablePath {
-    param(
-        [string]$BrowserExecutableName,
-        [string[]]$Candidates,
-        [string[]]$LocalAppDataFallback = @()
-    )
-
-    $allCandidates = @($Candidates + $LocalAppDataFallback)
-
-    try {
-        $cmd = Get-Command $BrowserExecutableName -ErrorAction SilentlyContinue
-        if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.Source)) {
-            $allCandidates += [string]$cmd.Source
-        }
-    } catch {}
-
-    $appPathKeys = @(
-        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$BrowserExecutableName",
-        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\$BrowserExecutableName",
-        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\$BrowserExecutableName"
-    )
-    foreach ($k in $appPathKeys) {
-        try {
-            if (Test-Path $k) {
-                $v = (Get-ItemProperty -Path $k -ErrorAction SilentlyContinue).'(default)'
-                if (-not [string]::IsNullOrWhiteSpace([string]$v)) {
-                    $allCandidates += [string]$v
-                }
-            }
-        } catch {}
-    }
-
-    $allCandidates = @($allCandidates | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique)
-    foreach ($candidate in $allCandidates) {
-        if (Test-Path $candidate) { return $candidate }
-    }
-    return ""
-}
-
-function Get-EnvironmentInfo {
-    return @{
-        hostname = $env:COMPUTERNAME
-        browser_versions = @{
-            edge = Get-ExecutableVersion -BrowserExecutableName "msedge.exe" -Candidates @("$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe", "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe") -LocalAppDataFallback @("$env:LOCALAPPDATA\Microsoft\Edge\Application\msedge.exe")
-            chrome = Get-ExecutableVersion -BrowserExecutableName "chrome.exe" -Candidates @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe") -LocalAppDataFallback @("$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe")
-            firefox = Get-ExecutableVersion -BrowserExecutableName "firefox.exe" -Candidates @("$env:ProgramFiles\Mozilla Firefox\firefox.exe", "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe") -LocalAppDataFallback @("$env:LOCALAPPDATA\Mozilla Firefox\firefox.exe")
-        }
-    }
-}
-
-function Sanitize-ReportText {
-    param(
-        [object]$Value,
-        [string]$TestName = ""
-    )
-
-    if ($null -eq $Value) { return "" }
-    $text = [string]$Value
-    if ([string]::IsNullOrWhiteSpace($text)) { return "" }
-
-    $cleaned = $text
-    $cleaned = [regex]::Replace($cleaned, '(?i)Mapped\s+policy(?:\s+key)?(?:\s+not\s+found\s+locally|\s+not\s+found)?\s*:\s*[^\r\n]+', 'The mapped policy key could not be detected on the local system.')
-    $cleaned = [regex]::Replace($cleaned, '(?i)Mapped\s+pref(?:erence)?(?:\s+key)?(?:\s+not\s+found\s+locally|\s+not\s+found)?\s*:\s*[^\r\n]+', 'The mapped preference key could not be detected on the local system.')
-    $cleaned = [regex]::Replace($cleaned, 'policies\.json not found', 'The enterprise policy file was not found on this endpoint', 'IgnoreCase')
-    $cleaned = [regex]::Replace($cleaned, '\bpref(?:erence)?\s+not\s+found\b', 'preference key not found', 'IgnoreCase')
-    $cleaned = [regex]::Replace($cleaned, '\s+', ' ').Trim()
-
-    if ($cleaned -match '^[A-Za-z0-9 _-]+:\s*RISK$') {
-        $label = ($cleaned -split ':')[0].Trim()
-        $cleaned = "$label a risky configuration was detected in this control."
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($TestName) -and [string]::Equals($cleaned, $TestName, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $cleaned = "$TestName a state that is not aligned with enterprise security expectations was detected in this control."
-    }
-
-    return $cleaned
-}
-
-function Is-NaLikeText {
-    param([string]$Text)
-    if ([string]::IsNullOrWhiteSpace($Text)) { return $true }
-    return [bool]([regex]::IsMatch($Text.Trim(), '^(yok|n/?a|na|null|none|-)$', 'IgnoreCase'))
-}
-
-function Get-FirstMeaningfulText {
-    param(
-        [object[]]$Candidates,
-        [string]$TestName = ""
-    )
-    foreach ($candidate in $Candidates) {
-        $cleaned = Sanitize-ReportText -Value $candidate -TestName $TestName
-        if (-not (Is-NaLikeText $cleaned)) {
-            return $cleaned
-        }
-    }
-    return ""
-}
-
-function Is-CrossLayerWarningText {
-    param([string]$Text)
-    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
-
-    $pattern = '(?i)(baska\s+.*katman|proxy|sse|casb|cloud\s*policy|yonetim\s+katman|enforcement\s+olabilir|davranissal\s+manuel\s+test)'
-    return [bool]([regex]::IsMatch($Text, $pattern))
-}
-
-function ConvertTo-BoolSafe {
-    param([object]$Value)
-
-    if ($Value -is [bool]) { return $Value }
-    if ($null -eq $Value) { return $false }
-
-    if ($Value -is [string]) {
-        $t = $Value.Trim().ToLowerInvariant()
-        if ([string]::IsNullOrWhiteSpace($t)) { return $false }
-        return ($t -in @('true', '1', 'yes', 'y', 'evet'))
-    }
-
-    if ($Value -is [int] -or $Value -is [long] -or $Value -is [double]) {
-        return ([double]$Value -ne 0)
-    }
-
-    return $true
-}
-
-function Should-KeepWarningNote {
-    param(
-        [hashtable]$Payload,
-        [string]$WarningText
-    )
-
-    if ([string]::IsNullOrWhiteSpace($WarningText)) { return $false }
-    if (-not (Is-CrossLayerWarningText -Text $WarningText)) { return $true }
-
-    $status = [string](Get-ResultField -Result $Payload -FieldName 'status' -DefaultValue '')
-    $manualRequiredRaw = Get-ResultField -Result $Payload -FieldName 'manual_required' -DefaultValue $false
-    $manualRequired = ConvertTo-BoolSafe -Value $manualRequiredRaw
-
-    if ($status -eq 'UNKNOWN') { return $true }
-    if ($manualRequired) { return $true }
-
-    return $false
-}
-
-function Get-ImpactNarrative {
-    param(
-        [string]$TestName,
-        [string]$CurrentImpact,
-        [string]$Status,
-        [string]$ExpectedValue,
-        [string]$ObservedValue
-    )
-
-    $name = ([string]$TestName).ToLowerInvariant()
-    $impact = [string]$CurrentImpact
-    $isGeneric = [string]::IsNullOrWhiteSpace($impact) -or [regex]::IsMatch($impact, '(?i)^bu bulgu guvenlik durusunu olumsuz etkileyebilir\.?$|policies\s+file\s+bulunamazsa')
-
-    $risk = 'When the setting is not enforced, the attack surface grows, the audit trail weakens, and a compliance gap can appear.'
-    if ($name -match 'incognito|inprivate|private browsing') {
-        $risk = 'If private browsing remains unrestricted, the audit trail shrinks and data exfiltration, shadow IT, and forensic investigation difficulties increase.'
-    } elseif ($name -match 'password') {
-        $risk = 'If browser password storage stays enabled, credentials can be harvested quickly after endpoint compromise, increasing the risk of account takeover.'
-    } elseif ($name -match 'extension|eklenti') {
-        $risk = 'Unauthorized extensions can be used to steal tokens and cookies, manipulate page content, and exfiltrate data.'
-    } elseif ($name -match 'developer|devtools') {
-        $risk = 'Without DevTools restrictions, client-side controls can be bypassed, script injection becomes easier, and tampering with secure workflows increases.'
-    } elseif ($name -match 'safe browsing|security bypass') {
-        $risk = 'If malicious site and download warnings are weakened, phishing, malware, and drive-by download incidents can increase.'
-    } elseif ($name -match 'sync|account|firefox accounts') {
-        $risk = 'If synchronization remains enabled, bookmarks, history, and sometimes credentials can be moved to clouds outside the organization, causing data classification violations.'
-    } elseif ($name -match 'dns|doh') {
-        $risk = 'If DNS queries are unprotected, traffic visibility can be lost and manipulated DNS responses can redirect users to fraudulent destinations.'
-    } elseif ($name -match 'download') {
-        $risk = 'If download restrictions are weak, users can execute unsigned or risky files, increasing the likelihood of ransomware and trojan infections.'
-    } elseif ($name -match 'proxy') {
-        $risk = 'Without enforced proxy controls, traffic can bypass security layers, and DLP, URL filtering, and centralized logging may be weakened.'
-    } elseif ($name -match 'telemetry|form history|autofill|cookie') {
-        $risk = 'If browser data collection and retention controls are weak, sensitive data residue increases and privacy and data protection compliance risk arises.'
-    }
-
-    $statePrefix = if ([string]$Status -eq 'PASSED') { 'The control is currently in the expected state. ' } else { 'The control is not in the expected state. ' }
-    $expectedClean = ([string]$ExpectedValue).Trim().TrimEnd('.')
-    $observedClean = ([string]$ObservedValue).Trim().TrimEnd('.')
-    $expectedNote = if (-not [string]::IsNullOrWhiteSpace($expectedClean)) { " Expected state: $expectedClean." } else { '' }
-    $observedNote = if (-not [string]::IsNullOrWhiteSpace($observedClean)) { " Observed state: $observedClean." } else { '' }
-
-    if ($isGeneric) {
-        return "$statePrefix$risk$expectedNote$observedNote".Trim()
-    }
-
-    if ($impact -notmatch '(?i)olasi|risk|etki|saldiri|uyumluluk|veri') {
-        return "$($impact.Trim()) Potential impact: $risk$expectedNote$observedNote".Trim()
-    }
-
-    return "$($impact.Trim())$expectedNote$observedNote".Trim()
-}
-
-function Get-IncidentScenarioNarrative {
-    param(
-        [string]$TestName,
-        [string]$Status,
-        [string]$ExpectedValue,
-        [string]$ObservedValue
-    )
-
-    $name = ([string]$TestName).ToLowerInvariant()
-    $title = if ([string]::IsNullOrWhiteSpace([string]$TestName)) { 'This control' } else { [string]$TestName }
-    $isPassed = [string]$Status -eq 'PASSED'
-    $expected = ([string]$ExpectedValue).Trim().TrimEnd('.')
-    $observed = ([string]$ObservedValue).Trim().TrimEnd('.')
-
-    $vector = 'Browser security configuration weakness'
-    $techImpact = 'parts of client-side security barriers can be indirectly bypassed'
-    $businessImpact = 'hesap guvenligi, veri gizliligi ve denetim uyumu riske girebilir'
-
-    if ($name -match 'incognito|inprivate|private browsing') {
-        $vector = 'izsiz ozel oturum kullanimi'
-        $techImpact = 'denetim izi ve URL/oturum gorunurlugu azalir, olay inceleme delilleri zayiflar'
-        $businessImpact = 'uygunsuz veri erisimi veya politika ihlali olaylarinda kok neden analizi gecikir'
-    } elseif ($name -match 'password|autocomplete') {
-        $vector = 'tarayicida kayitli kimlik bilgisi suistimali'
-        $techImpact = 'endpoint ele gecirme sonrasi sakli parola/otomatik doldurma verisi toplanabilir'
-        $businessImpact = 'hesap devralma, ayricalikli erisim ve kritik sistemlerde yetkisiz islem riski artar'
-    } elseif ($name -match 'extension|add-on|store') {
-        $vector = 'yetkisiz eklenti yukleme zinciri'
-        $techImpact = 'eklenti izinleri ile cerez, DOM ve form verisi okunup dis ortama aktarilabilir'
-        $businessImpact = 'data leakage and supply-chain-driven security incidents may occur'
-    } elseif ($name -match 'developer|devtools|debug|about:config|developer edition') {
-        $vector = 'debug/yetkili gelistirici ozelliklerinin kotuye kullanimi'
-        $techImpact = 'istemci tarafi kontroller manipule edilerek koruyucu mekanizmalar etkisizlestirilebilir'
-        $businessImpact = 'ic tehdit ve red-team benzeri saldiri senaryolarinda ihlal olasiligi artar'
-    } elseif ($name -match 'safe browsing|smartscreen|phishing|security warning') {
-        $vector = 'zararli hedeflere yonlendirme ve kimlik avi'
-        $techImpact = 'tehdit itibari uyarilari zayiflayarak malware/phishing tespiti gecikebilir'
-        $businessImpact = 'kullanici kimlik bilgileri ve kurumsal hesaplar hedef alinabilir'
-    } elseif ($name -match 'sync|accounts?|browser sign-in|implicit sign-in|profile separation') {
-        $vector = 'kurum disi bulut senkronizasyonu'
-        $techImpact = 'gecmis, yer imi, oturum ve profil verileri yonetim disi ortamlara tasinabilir'
-        $businessImpact = 'veri egemenligi, KVKK/GDPR uyumu ve denetim kapsaminda bulgu riski artar'
-    } elseif ($name -match 'dns|doh|webrtc|local ip') {
-        $vector = 'ad/cikti trafik manipuÌˆlasyonu ve ag metadata sizintisi'
-        $techImpact = 'kullanicilar sahte hedeflere yonlendirilebilir veya yerel ag bilgisi ifsa olabilir'
-        $businessImpact = 'phishing success rates may increase while network-level visibility decreases'
-    } elseif ($name -match 'download|file type|prompt') {
-        $vector = 'kontrolsuz dosya indirme ve calistirma'
-        $techImpact = 'imzasiz/riskli dosyalar uzerinden malware yuklenmesi kolaylasir'
-        $businessImpact = 'is surekliligi kesintisi ve fidye yazilimi kaynakli finansal kayip olusabilir'
-    } elseif ($name -match 'proxy|ssl|https-only|tls|certificate|ocsp|crl|pinning|hsts|mixed content|quic') {
-        $vector = 'trafik guvenligi ve sertifika dogrulama zayifligi'
-        $techImpact = 'MITM benzeri saldirilarin basari sansi artabilir, guvenli kanal garantisi zayiflar'
-        $businessImpact = 'hassas veri aktariminda gizlilik ve butunluk riski yukselir'
-    } elseif ($name -match 'cookie|third-party storage|site isolation|renderer|sandbox|referrer|protocol handler') {
-        $vector = 'oturum ve tarayici izolasyon kontrollerinin zayiflamasi'
-        $techImpact = 'oturum takibi, cerez suistimali veya siteler arasi etki alani buyuyebilir'
-        $businessImpact = 'hesap suistimali ve kullanici mahremiyeti ihlalleri artabilir'
-    } elseif ($name -match 'telemetry|metrics|feedback|crash|domain reliability|usage') {
-        $vector = 'yonetim disi tanilama/veri paylasim kanallari'
-        $techImpact = 'istemci davranis/metrik verisi dis servislere transfer edilebilir'
-        $businessImpact = 'veri minimizasyonu ve reguÌˆlatif beklentilerle uyumsuzluk olusabilir'
-    }
-
-    $statePrefix = if ($isPassed) { 'Durum: Kontrol su an aktif ve beklenen politikaya uyumlu.' } else { 'Durum: Kontrol beklenen sertlestirme seviyesinde degil.' }
-    $expectedNote = if (-not [string]::IsNullOrWhiteSpace($expected)) { " Beklenen: $expected." } else { '' }
-    $observedNote = if (-not [string]::IsNullOrWhiteSpace($observed)) { " Gozlenen: $observed." } else { '' }
-
-    return "$statePrefix Olay Senaryosu ($title): Tehdit aktoru $vector uzerinden ilerleyebilir. Teknik Etki: $techImpact. Is Etkisi: $businessImpact.$expectedNote$observedNote".Trim()
-}
+. $script:CommonLibraryPath
 
 function Normalize-ReportPayload {
     param([hashtable]$Payload)
@@ -433,90 +76,6 @@ function Normalize-ReportPayload {
     return $Payload
 }
 
-function Get-ResultField {
-    param(
-        [object]$Result,
-        [string]$FieldName,
-        [object]$DefaultValue = ""
-    )
-
-    if ($null -eq $Result) { return $DefaultValue }
-
-    if ($Result -is [hashtable]) {
-        if ($Result.ContainsKey($FieldName)) {
-            return $Result[$FieldName]
-        }
-        return $DefaultValue
-    }
-
-    $prop = $Result.PSObject.Properties[$FieldName]
-    if ($null -ne $prop) {
-        return $prop.Value
-    }
-
-    return $DefaultValue
-}
-
-function Get-ResultFieldOrFallback {
-    param(
-        [object]$Result,
-        [string]$FieldName,
-        [object]$FallbackValue = ""
-    )
-
-    $value = Get-ResultField -Result $Result -FieldName $FieldName -DefaultValue $null
-    if ($null -eq $value) { return $FallbackValue }
-
-    if ($value -is [string]) {
-        if ([string]::IsNullOrWhiteSpace($value)) { return $FallbackValue }
-        return $value
-    }
-
-    return $value
-}
-
-function Get-MachineComparableExpectation {
-    param(
-        [object]$ExpectedValue,
-        [object]$ObservedValue
-    )
-
-    $text = [string]$ExpectedValue
-    if ([string]::IsNullOrWhiteSpace($text)) {
-        return @{ kind = ''; value = '' }
-    }
-
-    $t = $text.ToLowerInvariant()
-
-    if ($t -match '>=\s*(-?\d+)') {
-        return @{ kind = 'numeric_gte'; value = [string]$Matches[1] }
-    }
-    if ($t -match 'en az\s*(-?\d+)') {
-        return @{ kind = 'numeric_gte'; value = [string]$Matches[1] }
-    }
-    if ($t -match '(?i)\b(true|false)\b') {
-        return @{ kind = 'bool'; value = $Matches[1].ToLowerInvariant() }
-    }
-    if ($t -match '(?i)\b(0|1)\b\s*olmali') {
-        $boolVal = if ($Matches[1] -eq '1') { 'true' } else { 'false' }
-        return @{ kind = 'bool'; value = $boolVal }
-    }
-    if ($t -match '(?i)tanimli\s+olmamali|bulunmamali|bos\s+olmali') {
-        return @{ kind = 'bool'; value = 'false' }
-    }
-    if ($t -match '(?i)tanimli\s+olmali') {
-        return @{ kind = 'bool'; value = 'true' }
-    }
-    if ($t -match '(?i)\b(tls1\.[0-3])\b') {
-        return @{ kind = 'enum'; value = $Matches[1].ToLowerInvariant() }
-    }
-    if ($t -match '(?i)\b(secure|off|system|fixed_servers|pac_script)\b') {
-        return @{ kind = 'enum'; value = $Matches[1].ToLowerInvariant() }
-    }
-
-    return @{ kind = ''; value = '' }
-}
-
 function Get-DefaultEvidenceType {
     param([string]$VerifiedVia)
 
@@ -525,53 +84,6 @@ function Get-DefaultEvidenceType {
     if ($vv -match 'Preferences') { return 'preferences_file' }
     if ($vv -match 'Process Command Line') { return 'runtime_process_flags' }
     return 'result_snapshot'
-}
-
-function Get-DefaultStatusReason {
-    param([string]$Status)
-
-    switch ([string]$Status) {
-        'PASSED' { return 'expected_condition_met' }
-        'FAILED' { return 'expected_condition_not_met' }
-        'UNKNOWN' { return 'verification_inconclusive' }
-        default { return 'not_classified' }
-    }
-}
-
-function Add-ArtifactMetadata {
-    param([hashtable]$Payload)
-
-    $testId = [string](Get-ResultField -Result $Payload -FieldName 'test_id' -DefaultValue 'UNKNOWN')
-    $snapshot = [ordered]@{
-        run_id = $script:RunId
-        collected_at = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-        test_id = $testId
-        test_name = (Get-ResultField -Result $Payload -FieldName 'test_name' -DefaultValue '')
-        status = (Get-ResultField -Result $Payload -FieldName 'status' -DefaultValue '')
-        severity = (Get-ResultField -Result $Payload -FieldName 'severity' -DefaultValue '')
-        expected_value = (Get-ResultField -Result $Payload -FieldName 'expected_value' -DefaultValue '')
-        expected_kind = (Get-ResultField -Result $Payload -FieldName 'expected_kind' -DefaultValue '')
-        expected_machine_value = (Get-ResultField -Result $Payload -FieldName 'expected_machine_value' -DefaultValue '')
-        observed_value = (Get-ResultField -Result $Payload -FieldName 'observed_value' -DefaultValue '')
-        evidence_output = (Get-ResultField -Result $Payload -FieldName 'evidence_output' -DefaultValue '')
-        evidence_type = (Get-ResultField -Result $Payload -FieldName 'evidence_type' -DefaultValue '')
-        details = (Get-ResultField -Result $Payload -FieldName 'details' -DefaultValue '')
-        message = (Get-ResultField -Result $Payload -FieldName 'message' -DefaultValue '')
-        status_reason = (Get-ResultField -Result $Payload -FieldName 'status_reason' -DefaultValue '')
-    }
-
-    $artifactPath = Write-TestArtifact -TestId $testId -ArtifactName 'result_snapshot' -Data $snapshot
-    $Payload.run_id = $script:RunId
-    $Payload.evidence_path = $artifactPath
-    $Payload.evidence_items = @(
-        @{
-            type = if ([string]::IsNullOrWhiteSpace([string]$Payload.evidence_type)) { 'result_snapshot' } else { [string]$Payload.evidence_type }
-            path = $artifactPath
-            collected_at = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-        }
-    )
-
-    return $Payload
 }
 
 function Get-ChromeManualCheckGuidance {
@@ -675,7 +187,9 @@ function Get-ChromePolicyValue {
                     return @{ found = $true; value = $val; source = $path }
                 }
             }
-        } catch {}
+        } catch {
+            Write-Verbose "Policy read failed for '$path\$KeyName': $($_.Exception.Message)"
+        }
     }
 
     return @{ found = $false; value = $null; source = "" }
@@ -688,7 +202,9 @@ function Get-ChromePreferences {
             $prefs = Get-Content $prefPath -Raw | ConvertFrom-Json -ErrorAction Stop
             return @{ found = $true; prefs = $prefs; source = $prefPath }
         }
-    } catch {}
+    } catch {
+        Write-Verbose "Chrome preferences parse failed for '$prefPath': $($_.Exception.Message)"
+    }
 
     return @{ found = $false; prefs = $null; source = $prefPath }
 }
@@ -1325,7 +841,9 @@ function Get-ChromePolicyStore {
                     $store[$p.Name] = @{ value = $p.Value; source = $path }
                 }
             }
-        } catch {}
+        } catch {
+            Write-Verbose "Policy store enumeration failed for '$path': $($_.Exception.Message)"
+        }
     }
     return $store
 }
@@ -1390,7 +908,9 @@ function Get-CisPolicyMapIndex {
                 equivalent_policy_keys = $equivalents
             }
         }
-    } catch {}
+    } catch {
+        Write-Verbose "CIS policy map parse failed for '$mapPath': $($_.Exception.Message)"
+    }
 
     return $index
 }
@@ -1530,7 +1050,9 @@ function Get-ChromePolicyChildValues {
                     source = $childPath
                 }
             }
-        } catch {}
+        } catch {
+            Write-Verbose "Policy subkey enumeration failed for '$childPath': $($_.Exception.Message)"
+        }
     }
 
     return $values
@@ -1905,26 +1427,6 @@ function Invoke-CisPolicyTest {
         remediation = "'$matchedKey' policy degerini CIS beklentisine ($($Definition.expected)) uygun sekilde ayarlayin."
         reference = 'https://chromeenterprise.google/policies/'
     }
-}
-
-function Get-ControlDisplayName {
-    param(
-        [string]$PolicyKey,
-        [hashtable]$Definition
-    )
-
-    if (-not [string]::IsNullOrWhiteSpace($PolicyKey)) {
-        $name = $PolicyKey -replace '[._-]+', ' '
-        $name = $name -creplace '([A-Z]+)([A-Z][a-z])', '$1 $2'
-        $name = $name -creplace '([a-z0-9])([A-Z])', '$1 $2'
-        return $name.Trim()
-    }
-
-    $name = ([string]$Definition.raw_line) -replace '^\S+\s+', ''
-    $name = $name -replace '^\(L\d+\)\s+', ''
-    $name = $name -replace '(?i)^Ensure\s+', ''
-    $name = $name -replace "(?i)\s+is set to\s+'[^']+'\s*$", ''
-    return $name.Trim()
 }
 
 function Get-CisTestsFromCatalog {

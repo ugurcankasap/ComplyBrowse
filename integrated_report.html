@@ -1182,12 +1182,23 @@
                 <button class="tab-button" onclick="switchTab('firefox')">
                     <strong>Mozilla Firefox</strong>
                 </button>
+                <button class="tab-button" onclick="switchTab('safari')">
+                    <strong>Apple Safari (macOS)</strong>
+                </button>
             </div>
 
             <!-- EDGE TAB -->
             <div id="edge" class="tab-content active">
                 <div id="edge-summary" class="summary-stats"></div>
                 <div class="filters">
+                    <div class="filter-group">
+                        <label>Platform:</label>
+                        <select id="edge-platform-filter" onchange="applyFilters('edge')">
+                            <option value="">All platforms</option>
+                            <option value="Windows">Windows</option>
+                            <option value="macOS">macOS</option>
+                        </select>
+                    </div>
                     <div class="filter-group">
                         <label>Filter:</label>
                         <select id="edge-filter" onchange="applyFilters('edge')">
@@ -1232,6 +1243,14 @@
                 <div id="chrome-summary" class="summary-stats"></div>
                 <div class="filters">
                     <div class="filter-group">
+                        <label>Platform:</label>
+                        <select id="chrome-platform-filter" onchange="applyFilters('chrome')">
+                            <option value="">All platforms</option>
+                            <option value="Windows">Windows</option>
+                            <option value="macOS">macOS</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
                         <label>Filter:</label>
                         <select id="chrome-filter" onchange="applyFilters('chrome')">
                             <option value="">All</option>
@@ -1275,6 +1294,14 @@
                 <div id="firefox-summary" class="summary-stats"></div>
                 <div class="filters">
                     <div class="filter-group">
+                        <label>Platform:</label>
+                        <select id="firefox-platform-filter" onchange="applyFilters('firefox')">
+                            <option value="">All platforms</option>
+                            <option value="Windows">Windows</option>
+                            <option value="macOS">macOS</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
                         <label>Filter:</label>
                         <select id="firefox-filter" onchange="applyFilters('firefox')">
                             <option value="">All</option>
@@ -1312,22 +1339,65 @@
                     </div>
                 </div>
             </div>
+
+            <!-- SAFARI TAB -->
+            <div id="safari" class="tab-content">
+                <div id="safari-summary" class="summary-stats"></div>
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Platform:</label>
+                        <select id="safari-platform-filter" onchange="applyFilters('safari')">
+                            <option value="macOS">macOS</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Filter:</label>
+                        <select id="safari-filter" onchange="applyFilters('safari')">
+                            <option value="">All</option>
+                            <option value="PASS">Verdict: PASS</option>
+                            <option value="PASS_NOT_ENFORCED">Verdict: PASS_NOT_ENFORCED</option>
+                            <option value="FAIL">Verdict: FAIL</option>
+                            <option value="NOT_ASSESSED">Verdict: NOT_ASSESSED</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" placeholder="Search by ID or name..." onkeyup="applyFilters('safari')" id="safari-search">
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="clearFilters('safari')">Clear Filter</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="expand-btn" onclick="exportFilteredCsv('safari')">CSV Export</button>
+                    </div>
+                </div>
+                <div id="safari-content" class="table-wrapper">
+                    <div class="loading"><div class="spinner"></div><p>Loading...</p></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        const browsers = ['edge', 'chrome', 'firefox'];
+        const browsers = ['edge', 'chrome', 'firefox', 'safari'];
+        const macosMode = new URLSearchParams(window.location.search).get('platform') === 'macos' || Boolean(window.__MACOS_DATA__);
         const uiState = { viewMode: 'advanced' };
         const data = {
             edge: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false },
             chrome: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false },
-            firefox: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false }
+            firefox: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false },
+            safari: { testResults: null, verified: null, policyMap: [], filtered: null, rendered: false }
         };
+
+        if (macosMode) {
+            document.querySelector('.tab-button').style.display = 'none';
+            document.getElementById('edge').style.display = 'none';
+        }
 
         const browserReferenceBases = {
             edge: 'https://learn.microsoft.com/deployedge/microsoft-edge-policies/',
             chrome: 'https://chromeenterprise.google/policies/',
-            firefox: 'https://mozilla.github.io/policy-templates/'
+            firefox: 'https://mozilla.github.io/policy-templates/',
+            safari: 'https://www.cisecurity.org/benchmark/apple_os'
         };
         const criticalPlatformReferenceFallbacks = {
             edge: {
@@ -1527,32 +1597,76 @@
             }
         }
 
+        async function fetchOptionalJson(url) {
+            try {
+                return await fetchJsonWithTimeout(url);
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function resultRows(payload, platform) {
+            const rows = Array.isArray(payload) ? payload : (payload?.results || payload?.tests || []);
+            return rows.map(row => ({ ...row, platform: row.platform || platform }));
+        }
+
         // Fetch JSON files
         async function loadData() {
+            if (macosMode && window.__MACOS_DATA__) {
+                Object.entries(window.__MACOS_DATA__).forEach(([browser, browserData]) => {
+                    data[browser].testResults = browserData.testResults;
+                    data[browser].verified = browserData.verified;
+                    data[browser].policyMap = browserData.policyMap || [];
+                    renderBrowser(browser);
+                });
+                openInitialTab();
+                return;
+            }
+
             // Load all browsers in parallel
-            const loadPromises = browsers.map(async (browser) => {
+            const activeBrowsers = macosMode ? ['chrome', 'firefox', 'safari'] : browsers;
+            const loadPromises = activeBrowsers.map(async (browser) => {
                 try {
-                    const testFile = browser === 'edge' ? 'edge_test_results.json' : 
-                                    browser === 'chrome' ? 'chrome_test_results.json' : 
-                                    'firefox_test_results.json';
+                    const testFile = macosMode ? `${browser}_macos_test_results.json` :
+                                    browser === 'edge' ? 'edge_test_results.json' :
+                                    browser === 'chrome' ? 'chrome_test_results.json' :
+                                    browser === 'firefox' ? 'firefox_test_results.json' :
+                                    'safari_macos_test_results.json';
                     
-                    const verFile = browser === 'edge' ? 'edge_verified.json' : 
-                                   browser === 'chrome' ? 'chrome_verified.json' : 
-                                   'firefox_verified.json';
+                    const verFile = macosMode ? `${browser}_macos_test_results.json` :
+                                   browser === 'edge' ? 'edge_verified.json' :
+                                   browser === 'chrome' ? 'chrome_verified.json' :
+                                   browser === 'firefox' ? 'firefox_verified.json' :
+                                   'safari_macos_verified.json';
 
-                    const mapFile = browser === 'edge' ? 'edge_cis_policy_map.json' :
+                    const mapFile = macosMode ? `${browser}_macos_policy_map.json` :
+                                   browser === 'edge' ? 'edge_cis_policy_map.json' :
                                    browser === 'chrome' ? 'chrome_cis_policy_map.json' :
-                                   'firefox_cis_policy_map.json';
+                                   browser === 'firefox' ? 'firefox_cis_policy_map.json' :
+                                   'safari_macos_policy_map.json';
 
-                    const [testRes, verRes, mapRes] = await Promise.all([
+                    const macTestFile = macosMode || browser === 'edge' || browser === 'safari' ? null : `${browser}_macos_test_results.json`;
+                    const macVerFile = macosMode || browser === 'edge' || browser === 'safari' ? null : `${browser}_macos_verified.json`;
+                    const [testRes, verRes, mapRes, macTestRes, macVerRes] = await Promise.all([
                         fetchJsonWithTimeout(testFile),
                         fetchJsonWithTimeout(verFile),
-                        fetchJsonWithTimeout(mapFile)
+                        fetchJsonWithTimeout(mapFile),
+                        macTestFile ? fetchOptionalJson(macTestFile) : Promise.resolve(null),
+                        macVerFile ? fetchOptionalJson(macVerFile) : Promise.resolve(null)
                     ]);
 
-                    data[browser].testResults = testRes;
-                    data[browser].verified = verRes;
-                    data[browser].policyMap = Array.isArray(mapRes) ? mapRes : [];
+                    data[browser].testResults = [
+                        ...resultRows(testRes, browser === 'safari' ? 'macOS' : 'Windows'),
+                        ...resultRows(macTestRes, 'macOS')
+                    ];
+                    data[browser].verified = {
+                        ...verRes,
+                        results: [
+                            ...resultRows(verRes, browser === 'safari' ? 'macOS' : 'Windows'),
+                            ...resultRows(macVerRes, 'macOS')
+                        ]
+                    };
+                    data[browser].policyMap = Array.isArray(mapRes) ? mapRes : (mapRes.controls || []);
                 } catch (error) {
                     console.error(`Error loading ${browser}:`, error);
                     document.getElementById(`${browser}-content`).innerHTML = 
@@ -1569,7 +1683,7 @@
 
         function openInitialTab() {
             const hash = window.location.hash.substring(1);
-            switchTab(browsers.includes(hash) ? hash : 'edge');
+            switchTab(browsers.includes(hash) && (!macosMode || hash !== 'edge') ? hash : (macosMode ? 'chrome' : 'edge'));
         }
 
         function getEnglishRemediation(test) {
@@ -1590,19 +1704,21 @@
             // Merge data by test_id - use exact match
             const merged = [];
             testArray.forEach(test => {
+                const platform = test.platform || 'Windows';
                 const vTest = verifiedArray.find(t => {
                     // Try exact match first
-                    if (t.test_id === test.test_id) return true;
+                    if (t.test_id === test.test_id && (t.platform || 'Windows') === platform) return true;
                     // Fallback comparison
                     return false;
                 });
                 
-                const verdict = vTest?.verdict || test.verification_status || 'NOT_ASSESSED';
+                const verdict = vTest?.verdict || vTest?.runner_verdict || test.verdict || test.runner_verdict || test.verification_status || 'NOT_ASSESSED';
                 const decidingLayer = vTest?.deciding_layer || 'NONE';
                 const layersData = vTest?.layers || [];
                 
                 merged.push({
                     ...test,
+                    platform: platform,
                     test_name: vTest?.test_name || test.test_name || '',
                     remediation: getEnglishRemediation(vTest || test),
                     verdict: verdict,
@@ -1620,7 +1736,7 @@
                     reference_url: vTest?.reference_url || test.reference_url || '',
                     intune_reference_url: vTest?.intune_reference_url || test.intune_reference_url || '',
                     manageengine_reference_url: vTest?.manageengine_reference_url || test.manageengine_reference_url || '',
-                    cis_control: test.cis_controls || []
+                    cis_control: test.cis_controls || test.cis_control || (test.control_id ? [test.control_id] : [])
                 });
             });
 
@@ -1628,7 +1744,10 @@
             data[browser].rendered = true;
 
             // Summary stats
-            const summary = verified.verification_summary || {};
+            const summary = verified.verification_summary || verified.summary || {};
+            summary.pass = summary.pass ?? summary.passed ?? 0;
+            summary.fail = summary.fail ?? summary.failed ?? 0;
+            summary.pass_not_enforced = summary.pass_not_enforced ?? summary.passNotEnforced ?? 0;
             renderSummary(browser, summary);
 
             // Table
@@ -2355,7 +2474,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Test ID</th>
+                            <th>Platform / Test ID</th>
                             <th>Name</th>
                             <th>Verdict</th>
                             <th class="col-simple">Quick Note</th>
@@ -2405,7 +2524,7 @@
                 const remediationText = test.remediation ? `${test.remediation.split('\n')[0].substring(0, 50)}...` : '-';
                 const displayName = getDisplayName(test);
                 const control = Array.isArray(test.cis_control) && test.cis_control.length > 0 ? test.cis_control[0] : '-';
-                const detailId = `${browser}-${(test.test_id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+                const detailId = `${browser}-${(test.platform || 'Windows')}-${(test.test_id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
                 const refUrl = getReferenceUrl(browser, test);
                 const quickNote = getQuickNote(test);
                 const refCell = refUrl && refUrl !== '-'
@@ -2414,7 +2533,7 @@
 
                 html += `
                     <tr>
-                        <td class="test-id">${test.test_id || '-'}</td>
+                        <td class="test-id">${test.platform || 'Windows'} / ${test.test_id || '-'}</td>
                         <td>${displayName}</td>
                         <td>
                             <span class="verdict-badge ${verdictClass}">${test.verdict || '-'}</span>
@@ -2597,7 +2716,7 @@
             
             // Find and activate the correct tab button
             const buttons = document.querySelectorAll('.tab-button');
-            const browserIndex = ['edge', 'chrome', 'firefox'].indexOf(browser);
+            const browserIndex = ['edge', 'chrome', 'firefox', 'safari'].indexOf(browser);
             if (browserIndex >= 0 && buttons[browserIndex]) {
                 buttons[browserIndex].classList.add('active');
             }
@@ -2629,17 +2748,20 @@
         function getFilteredTests(browser) {
             const selectEl = document.getElementById(`${browser}-filter`);
             const severityEl = document.getElementById(`${browser}-severity-filter`);
+            const platformEl = document.getElementById(`${browser}-platform-filter`);
             const select = selectEl ? selectEl.value : '';
             const severity = severityEl ? severityEl.value : '';
+            const platform = platformEl ? platformEl.value : '';
             const search = document.getElementById(`${browser}-search`)?.value.toUpperCase() || '';
             
             let filtered = data[browser].filtered || [];
             
-            if (select || severity || search) {
+            if (select || severity || platform || search) {
                 filtered = filtered.filter(test => {
                     const matchStatus = !select || test.status === select;
                     const matchVerdict = !select || test.verdict === select;
                     const matchSeverity = !severity || String(test.severity || '').toUpperCase() === severity;
+                    const matchPlatform = !platform || (test.platform || 'Windows') === platform;
                     const searchableText = [
                         test.test_id,
                         getDisplayName(test),
@@ -2650,7 +2772,7 @@
                     ].join(' ').toUpperCase();
                     const matchSearch = !search || searchableText.includes(search);
                     
-                    return (matchStatus || matchVerdict) && matchSeverity && matchSearch;
+                    return (matchStatus || matchVerdict) && matchSeverity && matchPlatform && matchSearch;
                 });
             }
 
@@ -2660,9 +2782,11 @@
         function clearFilters(browser) {
             const selectEl = document.getElementById(`${browser}-filter`);
             const severityEl = document.getElementById(`${browser}-severity-filter`);
+            const platformEl = document.getElementById(`${browser}-platform-filter`);
             const searchEl = document.getElementById(`${browser}-search`);
             if (selectEl) selectEl.value = '';
             if (severityEl) severityEl.value = '';
+            if (platformEl) platformEl.value = '';
             if (searchEl) searchEl.value = '';
             renderTable(browser, data[browser]?.filtered || []);
         }
@@ -2692,6 +2816,7 @@
 
             const header = [
                 'Browser',
+                'Platform',
                 'TestID',
                 'TestName',
                 'Status',
@@ -2724,6 +2849,7 @@
 
                 csvLines.push(toCsvLine([
                     browserName,
+                    test.platform || 'Windows',
                     test.test_id || '',
                     getDisplayName(test),
                     test.status || '',

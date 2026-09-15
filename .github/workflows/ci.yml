@@ -6,6 +6,16 @@ on:
   pull_request:
 
 jobs:
+  publish-safety:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Private artifact and evidence leak gate
+        shell: powershell
+        run: powershell -ExecutionPolicy RemoteSigned -File .\tools\check_publish_safety.ps1
+
   quality-gates:
     runs-on: ubuntu-latest
     env:
@@ -26,7 +36,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Syntax check
-        run: python -m compileall browser_security_agent.py tests qa_tests
+        run: python -m compileall browser_security_agent.py tests qa_tests tools
+
+      - name: Python lint
+        run: python -m ruff check browser_security_agent.py macos_local_report.py tests qa_tests tools
 
       - name: Contract tests
         run: python -m unittest discover -s qa_tests -p "test_*.py" -v
@@ -35,6 +48,25 @@ jobs:
         run: |
           coverage run --source=browser_security_agent,tests -m unittest discover -s qa_tests -p "test_*.py"
           coverage report --fail-under=60
+
+  powershell-lint:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: powershell
+        run: Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force -AllowClobber
+
+      - name: PowerShell lint
+        shell: powershell
+        run: |
+          $files = Get-ChildItem -Path . -Recurse -Filter *.ps1 -File |
+            Where-Object { $_.FullName -notmatch '\\(artifacts|reports|releases|\.git)\\' }
+          $results = $files | Invoke-ScriptAnalyzer -Settings .\PSScriptAnalyzerSettings.psd1
+          $results | Format-Table -AutoSize
+          if ($results) { exit 1 }
 
   verification-regression:
     # Optional: runs only on push to main branch (requires browsers installed)
@@ -87,3 +119,43 @@ jobs:
       - name: Verification regression gates
         shell: powershell
         run: powershell -ExecutionPolicy RemoteSigned -File .\qa_tests\verification_regression_gate.ps1
+
+  macos-fixtures:
+    # GitHub-hosted macOS runners are not MDM-enrolled. Run only deterministic
+    # fixture tests here; never attempt real-device L1 collection in CI.
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Python lint
+        run: python -m ruff check browser_security_agent.py macos_local_report.py tests qa_tests tools
+
+      - name: Validate macOS launcher syntax
+        run: zsh -n ./run_macos_security.command
+
+      - name: macOS fixture tests only
+        run: python -m unittest qa_tests.test_macos_fixtures qa_tests.test_public_report_sanitization -v
+
+      - name: Report fixture-only scope
+        run: |
+          {
+            echo "## macOS fixture-only validation"
+            echo "This job validates deterministic synthetic fixtures and public-report sanitization."
+            echo "It does not collect live browser, MDM, profile, or L1 enforcement evidence."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Coverage gate
+        run: |
+          python -m coverage run -m unittest qa_tests.test_macos_fixtures qa_tests.test_public_report_sanitization
+          python -m coverage report --include='*/qa_tests/test_macos_fixtures.py' --fail-under=60

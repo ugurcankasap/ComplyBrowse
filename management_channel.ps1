@@ -39,6 +39,10 @@ Design rule:
 # CLOUD_UNREADABLE           browser-native cloud management is enrolled, values not on disk
 # NONE                       not found in any readable channel
 
+if (Test-Path (Join-Path $PSScriptRoot 'macos_management_channel.ps1')) {
+    . (Join-Path $PSScriptRoot 'macos_management_channel.ps1')
+}
+
 $script:BrowserPolicyRoots = @{
     Edge = @(
         @{ path = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge';             channel = 'GPO_MACHINE';         enforced = $true;  scope = 'machine' }
@@ -301,25 +305,45 @@ function Get-BrowserCloudManagementState {
 
 function Get-PlatformState {
     <#
-      Collection is registry-based and therefore Windows-only. On any other
-      platform the correct answer is "this endpoint was not assessed", not a set
-      of failures produced by paths that cannot exist.
-      $IsWindows only exists on PowerShell 6+, so its absence implies Windows.
+      Selects the platform-specific management channel collector. $IsWindows
+      only exists on PowerShell 6+, so its absence implies Windows.
     #>
-    $state = @{ os = 'Windows'; supported = $true; reason = '' }
+    $state = @{ os = 'Windows'; supported = $true; collector = 'registry'; reason = '' }
 
-    if (Test-Path Variable:\IsWindows) {
-        if (-not [bool](Get-Variable -Name IsWindows -ValueOnly)) {
-            $state.supported = $false
-            if (Test-Path Variable:\IsMacOS) {
-                if ([bool](Get-Variable -Name IsMacOS -ValueOnly)) { $state.os = 'macOS' }
-            }
-            if ($state.os -eq 'Windows') { $state.os = 'Linux' }
-            $state.reason = "Policy collection reads the Windows registry. On $($state.os) browser policy lives in configuration profiles or JSON policy files, which this collector does not read."
-        }
+    if ((Test-Path Variable:\IsWindows) -and [bool](Get-Variable -Name IsWindows -ValueOnly)) {
+        return $state
     }
 
+    if ((Test-Path Variable:\IsMacOS) -and [bool](Get-Variable -Name IsMacOS -ValueOnly)) {
+        $state.os = 'macOS'
+        $state.collector = 'managed_preferences'
+        $state.reason = 'macOS management evidence is collected from managed preferences and configuration profiles.'
+        return $state
+    }
+
+    $state.os = 'Linux'
+    $state.supported = $false
+    $state.collector = ''
+    $state.reason = 'Policy collection reads the Windows registry. On Linux browser policy lives in configuration files or other management stores, which this collector does not read.'
+
     return $state
+}
+
+function Get-HostNameForReport {
+    $names = @($env:COMPUTERNAME, $env:HOSTNAME)
+    foreach ($name in $names) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$name)) { return [string]$name }
+    }
+
+    try {
+        $name = [System.Net.Dns]::GetHostName()
+        if (-not [string]::IsNullOrWhiteSpace([string]$name)) { return [string]$name }
+    }
+    catch {
+        Write-Verbose "DNS host name lookup failed: $($_.Exception.Message)"
+    }
+
+    return ''
 }
 
 function Test-PolicyStoreAccess {
@@ -375,7 +399,7 @@ function Get-DeviceManagementProfile {
     param([string]$Browser)
 
     $mgmt = @{
-        hostname            = $env:COMPUTERNAME
+        hostname            = (Get-HostNameForReport)
         platform            = 'Windows'
         platform_supported  = $true
         platform_note       = ''
@@ -384,9 +408,9 @@ function Get-DeviceManagementProfile {
         domain_joined       = $false
         entra_joined        = $false
         entra_registered    = $false
-        mdm                 = (Get-MdmEnrollmentState)
-        admx_ingestion      = (Get-AdmxIngestionState -Browser $Browser)
-        cloud_management    = (Get-BrowserCloudManagementState -Browser $Browser)
+        mdm                 = @{ enrolled = $false; provider = ''; management_url = ''; upn = ''; enrollment_id = ''; evidence = @() }
+        admx_ingestion      = @{ present = $false; apps = @(); evidence = @() }
+        cloud_management    = @{ enrolled = $false; service = ''; evidence = @(); readable = $false }
         agents              = @()
         readable_channels   = @()
         unreadable_channels = @()
@@ -406,6 +430,19 @@ function Get-DeviceManagementProfile {
         }
         return $mgmt
     }
+
+    if ($platform.collector -eq 'managed_preferences') {
+        $macProfile = Get-MacOSManagementProfile -Browser $Browser
+        $macProfile.hostname = $mgmt.hostname
+        $macProfile.platform = $platform.os
+        $macProfile.platform_supported = $platform.supported
+        $macProfile.platform_note = $platform.reason
+        return $macProfile
+    }
+
+    $mgmt.mdm              = Get-MdmEnrollmentState
+    $mgmt.admx_ingestion   = Get-AdmxIngestionState -Browser $Browser
+    $mgmt.cloud_management = Get-BrowserCloudManagementState -Browser $Browser
 
     try {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -445,6 +482,7 @@ function Get-DeviceManagementProfile {
     }
     catch {
         # dsregcmd is unavailable on non-domain SKUs; join state stays as detected.
+        Write-Verbose "dsregcmd query failed: $($_.Exception.Message)"
     }
 
     foreach ($marker in $script:AgentMarkers) {

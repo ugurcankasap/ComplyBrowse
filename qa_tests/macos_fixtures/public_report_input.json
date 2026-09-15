@@ -1,0 +1,26 @@
+{
+  "browser": "Firefox",
+  "platform": "macOS",
+  "organization": "Synthetic Organization",
+  "hostname": "DESKTOP-SYNTHETIC",
+  "serial_number": "SERIAL-SYNTHETIC",
+  "hardware_uuid": "12345678-1234-4234-8234-123456789abc",
+  "mdm_enrollment_id": "enrollment-synthetic",
+  "results": [
+    {
+      "test_id": "F-MAC-001",
+      "cis_controls": ["1.1"],
+      "browser": "Firefox",
+      "platform": "macOS",
+      "expected_value": "false",
+      "observed_value": "false; source=/Users/synthetic-user/Library/Application Support/Firefox/Profiles/profile-alpha/prefs.js",
+      "verdict": "PASS_NOT_ENFORCED",
+      "evidence_type": "preferences_file",
+      "evidence_source_label": "FIREFOX_PROFILE_PREFERENCE",
+      "profile_name": "work-profile",
+      "profile_path": "/Users/synthetic-user/Library/Application Support/Firefox/Profiles/profile-alpha",
+      "extension_id": "abcdefghijklmnopabcdefghijklmnop",
+      "raw_plist": "<plist><key>Private</key></plist>"
+    }
+  ]
+}

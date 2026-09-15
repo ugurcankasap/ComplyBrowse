@@ -2,8 +2,9 @@
 
 This project uses semantic versioning with the following release line:
 - v1.0.0: Pre-dynamic baseline (last stable state before dynamic transition)
-- v1.1.0: Quick-report and reporting-quality improvements
-- v1.2.0: Dynamic evidence transition (expected/observed/evidence/confidence + artifacts)
+- v1.0.1: Catalog reliability, Edge verdict correctness, and community workflow
+- v1.1.0: macOS platform support (Chrome, Firefox, limited Safari) and the publish-safety gate
+- v1.2.0 (planned): Dynamic evidence transition (expected/observed/evidence/confidence + artifacts)
 
 ## Versioning Rules
 
@@ -14,8 +15,8 @@ This project uses semantic versioning with the following release line:
 ## Current Baseline Decision
 
 - v1.0.0 is defined as the final stable commit before dynamic transition work.
-- v1.1.0 is intentionally separated to represent the quality and operational improvements before full dynamic transition.
-- v1.2.0 represents the first dynamic evidence-ready release.
+- v1.1.0 extends the assessment surface to macOS without breaking the Windows report schema.
+- v1.2.0 represents the first dynamic evidence-ready release and is not shipped yet.
 
 ## Release Artifacts
 

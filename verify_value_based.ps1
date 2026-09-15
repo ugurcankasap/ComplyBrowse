@@ -23,6 +23,108 @@ Final verdict vocabulary (4 states):
 #>
 
 # ---------------------------------------------------------------------------
+# Platform context
+#
+# This is the ONLY place in the engine that branches on the host operating
+# system. Evidence locations, process-naming conventions and the source labels
+# that end up in the report are all resolved here, so the layer collectors below
+# stay platform-agnostic and Windows paths remain byte-identical.
+# ---------------------------------------------------------------------------
+
+$script:EvidencePlatform = if (($PSVersionTable.PSVersion.Major -ge 6) -and [bool]$IsMacOS) { 'macOS' } else { 'Windows' }
+
+if ($script:EvidencePlatform -eq 'macOS') {
+    $script:MacEvidenceHelperPath = Join-Path $PSScriptRoot 'macos_evidence.ps1'
+    if (-not (Test-Path -LiteralPath $script:MacEvidenceHelperPath)) {
+        throw "macOS evidence helper not found: $script:MacEvidenceHelperPath. Verification cannot continue with incomplete evidence coverage."
+    }
+    . $script:MacEvidenceHelperPath
+}
+
+$script:EvidenceUserHome = [Environment]::GetFolderPath('UserProfile')
+if ([string]::IsNullOrWhiteSpace($script:EvidenceUserHome)) { $script:EvidenceUserHome = "$HOME" }
+
+function Get-PlatformEvidenceContext {
+    <#
+      Returns the evidence contract for the current host: where user-level
+      configuration lives, how the browser process is identified, and which
+      source labels belong in the report for this platform.
+    #>
+    param([string]$Browser)
+
+    if ($script:EvidencePlatform -eq 'macOS') {
+        $appSupport = Join-Path $script:EvidenceUserHome 'Library/Application Support'
+
+        $chromiumRoots  = @()
+        $domain         = ''
+        $processPattern = ''
+        switch ($Browser) {
+            'Edge' {
+                $chromiumRoots  = @((Join-Path $appSupport 'Microsoft Edge'), (Join-Path $appSupport 'Microsoft Edge Beta'))
+                $domain         = 'com.microsoft.Edge'
+                $processPattern = '(?i)edge|microsoft'
+            }
+            'Chrome' {
+                $chromiumRoots  = @((Join-Path $appSupport 'Google/Chrome'), (Join-Path $appSupport 'Google/Chrome Beta'))
+                $domain         = 'com.google.Chrome'
+                $processPattern = '(?i)chrome|google'
+            }
+            'Firefox' {
+                $domain         = 'org.mozilla.firefox'
+                $processPattern = '(?i)firefox'
+            }
+        }
+
+        $profileLabel = if ($Browser -eq 'Firefox') { 'Firefox profile prefs.js/user.js' } else { "$Browser profile Preferences file" }
+        $plistLabel   = if ([string]::IsNullOrWhiteSpace($domain)) { '~/Library/Preferences' } else { "~/Library/Preferences/$domain.plist" }
+
+        return @{
+            platform                 = 'macOS'
+            chromium_user_data_roots = $chromiumRoots
+            firefox_roots            = @((Join-Path $appSupport 'Firefox'))
+            user_preference_domain   = $domain
+            process_name             = ''
+            process_pattern          = $processPattern
+            profile_source_label     = $profileLabel
+            plist_source_label       = $plistLabel
+            layer2_source            = "User-level configuration ($profileLabel, $plistLabel)"
+            layer3_source            = 'Runtime arbiter (process arguments via /bin/ps)'
+            runtime_verified_via     = '(?i)runtime|process argument|process command line|/bin/ps'
+        }
+    }
+
+    $chromiumRoots = @()
+    $processName   = ''
+    switch ($Browser) {
+        'Edge' {
+            $chromiumRoots = @("$env:LOCALAPPDATA\Microsoft\Edge\User Data", "$env:LOCALAPPDATA\Microsoft\Edge Beta\User Data")
+            $processName   = 'msedge'
+        }
+        'Chrome' {
+            $chromiumRoots = @("$env:LOCALAPPDATA\Google\Chrome\User Data", "$env:LOCALAPPDATA\Google\Chrome Beta\User Data")
+            $processName   = 'chrome'
+        }
+        'Firefox' {
+            $processName   = 'firefox'
+        }
+    }
+
+    return @{
+        platform                 = 'Windows'
+        chromium_user_data_roots = $chromiumRoots
+        firefox_roots            = @("$env:APPDATA\Mozilla\Firefox", "$env:LOCALAPPDATA\Mozilla\Firefox")
+        user_preference_domain   = ''
+        process_name             = $processName
+        process_pattern          = ''
+        profile_source_label     = 'Preferences / prefs.js'
+        plist_source_label       = ''
+        layer2_source            = 'User-level configuration (Preferences / prefs.js)'
+        layer3_source            = 'Runtime arbiter (process command line)'
+        runtime_verified_via     = '(?i)runtime|process command line|win32_process'
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Expectation parsing
 # ---------------------------------------------------------------------------
 
@@ -66,6 +168,7 @@ function Get-Layer1Evidence {
         layer    = 'L1'
         source   = 'Managed policy (Registry GPO / MDM / enterprise policies.json)'
         enforced = $true
+        access_denied = $false
         state    = 'NOT_ASSESSED'
         expected = ''
         actual   = ''
@@ -73,6 +176,14 @@ function Get-Layer1Evidence {
     }
 
     $message = "$($Test.message) $($Test.details)"
+
+    if ([bool]$Test.access_denied) {
+        $result.access_denied = $true
+        $result.details = "The collector could not read managed policy evidence due to an access denial. $($Test.message)"
+        $result.expected = [string](Get-ExpectedState -Test $Test)
+        $result.actual = '(access denied)'
+        return $result
+    }
 
     # A collector that reports it has no mapping or no way to check the control
     # has produced a coverage gap, not a policy observation. Reading that as
@@ -175,7 +286,12 @@ function Get-FirefoxPrefValue {
         if (-not (Test-Path $file)) { continue }
 
         $pattern = 'user_pref\(\s*"' + [regex]::Escape($PrefName) + '"\s*,\s*([^)]+?)\s*\)'
-        $match = [regex]::Match((Get-Content $file -Raw), $pattern)
+        try {
+            $match = [regex]::Match((Get-Content $file -Raw -ErrorAction Stop), $pattern)
+        }
+        catch [System.UnauthorizedAccessException] {
+            return @{ found = $false; value = $null; source = $file; access_denied = $true }
+        }
         if (-not $match.Success) { continue }
 
         $raw = $match.Groups[1].Value.Trim().Trim('"')
@@ -191,10 +307,10 @@ function Get-FirefoxPrefValue {
             }
             default       { $raw }
         }
-        return @{ found = $true; value = $value; source = $fileName }
+        return @{ found = $true; value = $value; source = $fileName; access_denied = $false }
     }
 
-    return @{ found = $false; value = $null; source = '' }
+    return @{ found = $false; value = $null; source = ''; access_denied = $false }
 }
 
 function Get-ChromiumProfileCandidates {
@@ -204,20 +320,17 @@ function Get-ChromiumProfileCandidates {
       in "Profile 1", so every profile directory that owns a Preferences file is
       scanned, with Default first.
     #>
-    param([string]$Browser)
+    param([string]$Browser, [hashtable]$Context)
+
+    if (-not $Context) { $Context = Get-PlatformEvidenceContext -Browser $Browser }
 
     $ordered = New-Object System.Collections.Generic.List[string]
-
-    $userDataRoots = switch ($Browser) {
-        'Edge'   { @("$env:LOCALAPPDATA\Microsoft\Edge\User Data", "$env:LOCALAPPDATA\Microsoft\Edge Beta\User Data") }
-        'Chrome' { @("$env:LOCALAPPDATA\Google\Chrome\User Data", "$env:LOCALAPPDATA\Google\Chrome Beta\User Data") }
-        default  { @() }
-    }
+    $userDataRoots = @($Context.chromium_user_data_roots)
 
     foreach ($root in $userDataRoots) {
         if ([string]::IsNullOrWhiteSpace($root) -or -not (Test-Path $root)) { continue }
 
-        $default = Join-Path $root 'Default\Preferences'
+        $default = Join-Path (Join-Path $root 'Default') 'Preferences'
         if (Test-Path $default) { $ordered.Add($default) | Out-Null }
 
         $others = Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
@@ -236,13 +349,14 @@ function Get-ChromiumProfileCandidates {
 
 function Get-FirefoxProfileCandidates {
     <# Resolves likely Firefox profile directories with default profiles prioritized. #>
+    param([hashtable]$Context)
+
+    if (-not $Context) { $Context = Get-PlatformEvidenceContext -Browser 'Firefox' }
+
     $ordered = New-Object System.Collections.Generic.List[string]
     $seen = @{}
 
-    $roots = @(
-        "$env:APPDATA\Mozilla\Firefox",
-        "$env:LOCALAPPDATA\Mozilla\Firefox"
-    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    $roots = @($Context.firefox_roots) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
     foreach ($root in $roots) {
         $profilesIni = Join-Path $root 'profiles.ini'
@@ -302,6 +416,44 @@ function Get-FirefoxProfileCandidates {
     return @($ordered)
 }
 
+function Test-ExpectedValueMatch {
+    <#
+      Applies a resolved comparison spec to a single observed value.
+      Extracted so the same expectation can be evaluated against more than one
+      evidence source without duplicating the comparison rules.
+    #>
+    param([hashtable]$Comparison, [hashtable]$Lookup)
+
+    switch ($Comparison.mode) {
+        'PRESENT' {
+            return ([bool]$Lookup.found -and -not [string]::IsNullOrWhiteSpace([string]$Lookup.value))
+        }
+        'BOOL' {
+            $s = [string]$Lookup.value
+            if ($s -match '^(?i:true|false)$') {
+                return (($s.ToLowerInvariant() -eq 'true') -eq [bool]$Comparison.bool_target)
+            }
+            return $false
+        }
+        'ENUM' {
+            return (([string]$Lookup.value).ToLowerInvariant() -eq [string]$Comparison.enum_target)
+        }
+        'NUM_GTE' {
+            [int64]$actual = 0
+            if ([int64]::TryParse([string]$Lookup.value, [ref]$actual)) { return ($actual -ge [int64]$Comparison.numeric_target) }
+            return $false
+        }
+        'NUM_EQ' {
+            [int64]$actual = 0
+            if ([int64]::TryParse([string]$Lookup.value, [ref]$actual)) { return ($actual -eq [int64]$Comparison.numeric_target) }
+            return $false
+        }
+        default {
+            return ([string]$Lookup.value -eq [string]$Comparison.state_target)
+        }
+    }
+}
+
 function Get-Layer2Evidence {
     <#
       User-level configuration check with real value comparison.
@@ -316,10 +468,13 @@ function Get-Layer2Evidence {
         [string]$ExpectedMachineValue = ''
     )
 
+    $context = Get-PlatformEvidenceContext -Browser $Browser
+
     $result = @{
         layer    = 'L2'
-        source   = 'User-level configuration (Preferences / prefs.js)'
+        source   = $context.layer2_source
         enforced = $false
+        access_denied = $false
         state    = 'NOT_ASSESSED'
         expected = $ExpectedState
         actual   = ''
@@ -433,113 +588,166 @@ function Get-Layer2Evidence {
         }
     }
 
+    $comparison = @{
+        mode           = $comparisonMode
+        state_target   = $target
+        bool_target    = $boolTarget
+        numeric_target = $numericTarget
+        enum_target    = $enumTarget
+    }
+
+    # ---- Source A: the browser profile configuration file -------------------
+    $profileLookup  = @{ found = $false; value = $null; source = ''; access_denied = $false }
+    $profileOutcome = @{ state = 'NOT_ASSESSED'; actual = ''; details = '' }
+
     if ($Browser -eq 'Firefox') {
-        $profileCandidates = Get-FirefoxProfileCandidates
+        $profileCandidates = @(Get-FirefoxProfileCandidates -Context $context)
         if ($profileCandidates.Count -eq 0) {
-            $result.details = 'No Firefox profile available to read.'
-            return $result
+            $profileOutcome.details = 'No Firefox profile available to read.'
         }
-
-        $lookup = @{ found = $false; value = $null; source = '' }
-        $scanned = 0
-        foreach ($profilePath in $profileCandidates) {
-            $scanned++
-            $candidate = Get-FirefoxPrefValue -ProfilePath $profilePath -PrefName $mapping.pref
-            if ($candidate.found) {
-                $lookup = $candidate
-                $lookup.source = Join-Path $profilePath $candidate.source
-                break
+        else {
+            $scanned = 0
+            foreach ($profilePath in $profileCandidates) {
+                $scanned++
+                $candidate = Get-FirefoxPrefValue -ProfilePath $profilePath -PrefName $mapping.pref
+                if ($candidate.access_denied) {
+                    $profileLookup.access_denied = $true
+                    $profileOutcome.actual  = '(access denied)'
+                    $profileOutcome.details = "The Firefox profile preference could not be read due to an access denial: $($candidate.source)"
+                    break
+                }
+                if ($candidate.found) {
+                    $profileLookup.found  = $true
+                    $profileLookup.value  = $candidate.value
+                    $profileLookup.source = Join-Path $profilePath $candidate.source
+                    break
+                }
             }
-        }
 
-        if (-not $lookup.found) {
-            $result.state   = 'ABSENT'
-            $result.actual  = '(not set)'
-            $result.details = "User preference '$($mapping.pref)' is not set in scanned Firefox profiles ($scanned profile(s)); browser default applies."
-            return $result
+            if (-not $profileLookup.found -and -not $profileLookup.access_denied) {
+                $profileOutcome.state   = 'ABSENT'
+                $profileOutcome.actual  = '(not set)'
+                $profileOutcome.details = "User preference '$($mapping.pref)' is not set in scanned Firefox profiles ($scanned profile(s)); browser default applies."
+            }
         }
     }
     else {
-        $profileCandidates = @(Get-ChromiumProfileCandidates -Browser $Browser)
+        $profileCandidates = @(Get-ChromiumProfileCandidates -Browser $Browser -Context $context)
         if ($profileCandidates.Count -eq 0) {
-            $result.details = "$Browser Preferences file not found in any profile."
-            return $result
+            $profileOutcome.details = "$Browser Preferences file not found in any profile."
         }
+        else {
+            $parsed = 0
+            foreach ($prefsPath in $profileCandidates) {
+                try {
+                    $prefs = Get-Content $prefsPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+                }
+                catch [System.UnauthorizedAccessException] {
+                    $profileLookup.access_denied = $true
+                    $profileOutcome.actual  = '(access denied)'
+                    $profileOutcome.details = "$Browser Preferences file could not be read due to an access denial: $prefsPath"
+                    break
+                }
+                catch {
+                    continue
+                }
+                $parsed++
 
-        $lookup = @{ found = $false; value = $null; source = '' }
-        $parsed = 0
-        foreach ($prefsPath in $profileCandidates) {
-            try {
-                $prefs = Get-Content $prefsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $candidate = Get-JsonValueByPath -Root $prefs -Path $mapping.pref
+                if ($candidate.found) {
+                    $profileLookup.found  = $true
+                    $profileLookup.value  = $candidate.value
+                    $profileLookup.source = $prefsPath
+                    break
+                }
             }
-            catch {
-                continue
+
+            if (-not $profileLookup.found -and -not $profileLookup.access_denied) {
+                if ($parsed -eq 0) {
+                    $profileOutcome.details = "$Browser Preferences files could not be parsed ($($profileCandidates.Count) candidate(s))."
+                }
+                else {
+                    $profileOutcome.state   = 'ABSENT'
+                    $profileOutcome.actual  = '(not set)'
+                    $profileOutcome.details = "User preference '$($mapping.pref)' is not set in any scanned $Browser profile ($parsed profile(s)); browser default applies."
+                }
             }
-            $parsed++
-
-            $candidate = Get-JsonValueByPath -Root $prefs -Path $mapping.pref
-            if ($candidate.found) {
-                $lookup = $candidate
-                $lookup.source = $prefsPath
-                break
-            }
-        }
-
-        if ($parsed -eq 0) {
-            $result.details = "$Browser Preferences files could not be parsed ($($profileCandidates.Count) candidate(s))."
-            return $result
-        }
-
-        if (-not $lookup.found) {
-            $result.state   = 'ABSENT'
-            $result.actual  = '(not set)'
-            $result.details = "User preference '$($mapping.pref)' is not set in any scanned $Browser profile ($parsed profile(s)); browser default applies."
-            return $result
         }
     }
 
-    if (-not $lookup.found) {
-        $result.state   = 'ABSENT'
-        $result.actual  = '(not set)'
-        $result.details = "User preference '$($mapping.pref)' is not set; browser default applies."
+    if ($profileLookup.access_denied) {
+        $result.access_denied = $true
+        $result.actual  = $profileOutcome.actual
+        $result.details = $profileOutcome.details
         return $result
     }
 
-    $sourceSuffix = if (-not [string]::IsNullOrWhiteSpace([string]$lookup.source)) { " (source: $($lookup.source))" } else { '' }
-    $result.actual = "$($mapping.pref) = $($lookup.value)$sourceSuffix"
+    # ---- Source B (macOS only): the user preference domain plist ------------
+    # On macOS the same user-level intent can also be written into
+    # ~/Library/Preferences. Both sources are user-revertible, so neither one
+    # outranks the other and a disagreement cannot be resolved by picking one.
+    $plistLookup = @{ found = $false; value = $null; source = ''; access_denied = $false }
 
-    $isCompliant = $false
-    if ($comparisonMode -eq 'STATE') {
-        $isCompliant = ([string]$lookup.value -eq [string]$target)
-    }
-    elseif ($comparisonMode -eq 'PRESENT') {
-        $isCompliant = $lookup.found -and -not [string]::IsNullOrWhiteSpace([string]$lookup.value)
-    }
-    elseif ($comparisonMode -eq 'BOOL') {
-        $valBool = $null
-        $s = [string]$lookup.value
-        if ($s -match '^(?i:true|false)$') {
-            $valBool = ($s.ToLowerInvariant() -eq 'true')
+    if ($context.platform -eq 'macOS' -and -not [string]::IsNullOrWhiteSpace([string]$context.user_preference_domain)) {
+        $macPref = Get-MacPreferenceValue -Domain ([string]$context.user_preference_domain) -Key $PolicyKey -Scope 'User'
+        if ($macPref.access_denied) {
+            $result.access_denied = $true
+            $result.actual  = '(access denied)'
+            $result.details = "The user preference domain could not be read due to an access denial: $($macPref.source_path)"
+            return $result
         }
-        $isCompliant = ($null -ne $valBool -and $valBool -eq $boolTarget)
-    }
-    elseif ($comparisonMode -in @('NUM_GTE', 'NUM_EQ')) {
-        [int64]$actualNum = 0
-        if ([int64]::TryParse([string]$lookup.value, [ref]$actualNum)) {
-            if ($comparisonMode -eq 'NUM_GTE') { $isCompliant = ($actualNum -ge $numericTarget) }
-            if ($comparisonMode -eq 'NUM_EQ')  { $isCompliant = ($actualNum -eq $numericTarget) }
+        if ($macPref.found) {
+            $plistLookup.found  = $true
+            $plistLookup.value  = $macPref.value
+            $plistLookup.source = [string]$macPref.source_path
         }
     }
-    elseif ($comparisonMode -eq 'ENUM') {
-        $isCompliant = ([string]$lookup.value).ToLowerInvariant() -eq $enumTarget
+
+    if (-not $profileLookup.found -and -not $plistLookup.found) {
+        $result.state   = $profileOutcome.state
+        $result.actual  = $profileOutcome.actual
+        $result.details = $profileOutcome.details
+        if ($context.platform -eq 'macOS') {
+            $result.details = "$($result.details) '$PolicyKey' is also absent from $($context.plist_source_label)."
+        }
+        return $result
+    }
+
+    $profileMatch = $null
+    if ($profileLookup.found) { $profileMatch = [bool](Test-ExpectedValueMatch -Comparison $comparison -Lookup $profileLookup) }
+    $plistMatch = $null
+    if ($plistLookup.found) { $plistMatch = [bool](Test-ExpectedValueMatch -Comparison $comparison -Lookup $plistLookup) }
+
+    if ($null -ne $profileMatch -and $null -ne $plistMatch -and $profileMatch -ne $plistMatch) {
+        $result.state   = 'NOT_ASSESSED'
+        $result.actual  = "$($mapping.pref) = $($profileLookup.value) (source: $($profileLookup.source)); $PolicyKey = $($plistLookup.value) (source: $($plistLookup.source))"
+        $result.details = "The two user-level sources on this host disagree: $($context.profile_source_label) and $($context.plist_source_label) evaluate to opposite compliance results. Both are user-revertible, so neither outranks the other and no verdict was derived."
+        return $result
+    }
+
+    if ($profileLookup.found) {
+        $lookup      = $profileLookup
+        $observedKey = [string]$mapping.pref
+        $isCompliant = $profileMatch
+    }
+    else {
+        $lookup      = $plistLookup
+        $observedKey = $PolicyKey
+        $isCompliant = $plistMatch
+    }
+
+    $sourceSuffix = if (-not [string]::IsNullOrWhiteSpace([string]$lookup.source)) { " (source: $($lookup.source))" } else { '' }
+    $result.actual = "$observedKey = $($lookup.value)$sourceSuffix"
+    if ($profileLookup.found -and $plistLookup.found) {
+        $result.actual = "$($result.actual); $PolicyKey = $($plistLookup.value) (source: $($plistLookup.source))"
     }
 
     if ($isCompliant) {
         $result.state = 'COMPLIANT'
         if ($isDirectFirefoxPref) {
-            $result.details = "Direct Firefox pref matches expectation ($($mapping.pref) = $($lookup.value))."
+            $result.details = "Direct Firefox pref matches expectation ($observedKey = $($lookup.value))."
         } else {
-            $result.details = "User preference matches expectation ($($mapping.pref) = $($lookup.value))."
+            $result.details = "User preference matches expectation ($observedKey = $($lookup.value))."
         }
     } else {
         $result.state = 'NON_COMPLIANT_VALUE'
@@ -566,6 +774,10 @@ function Get-Layer2Evidence {
         }
     }
 
+    if ($profileLookup.found -and $plistLookup.found) {
+        $result.details = "$($result.details) Both user-level sources on this host agree."
+    }
+
     return $result
 }
 
@@ -585,9 +797,11 @@ function Get-Layer3Arbiter {
         [psobject]$Test
     )
 
+    $context = Get-PlatformEvidenceContext -Browser $Browser
+
     $result = @{
         layer    = 'L3'
-        source   = 'Runtime arbiter (process command line)'
+        source   = $context.layer3_source
         enforced = $false
         state    = 'NOT_ASSESSED'
         expected = 'No policy-neutralising runtime override'
@@ -595,13 +809,8 @@ function Get-Layer3Arbiter {
         details  = 'Arbiter not invoked.'
     }
 
-    $processName = switch ($Browser) {
-        'Edge'    { 'msedge' }
-        'Chrome'  { 'chrome' }
-        'Firefox' { 'firefox' }
-        default   { $null }
-    }
-    if (-not $processName) { return $result }
+    $processSelector = if ($context.platform -eq 'macOS') { [string]$context.process_pattern } else { [string]$context.process_name }
+    if ([string]::IsNullOrWhiteSpace($processSelector)) { return $result }
 
     # The arbiter inspects generic policy-neutralising switches. That signal says
     # nothing about a control whose evidence lives outside this endpoint (identity
@@ -615,17 +824,23 @@ function Get-Layer3Arbiter {
         return $result
     }
 
-    try {
-        $commandLines = @(Get-CimInstance Win32_Process -Filter "Name='$processName.exe'" -ErrorAction Stop |
-                          Select-Object -ExpandProperty CommandLine)
+    if ($context.platform -eq 'macOS') {
+        # macOS process names carry no .exe suffix, so the selector is a name pattern.
+        $commandLines = @(Get-MacProcessArguments -ProcessNamePattern $processSelector)
     }
-    catch {
-        $commandLines = @()
+    else {
+        try {
+            $commandLines = @(Get-CimInstance Win32_Process -Filter "Name='$processSelector.exe'" -ErrorAction Stop |
+                              Select-Object -ExpandProperty CommandLine)
+        }
+        catch {
+            $commandLines = @()
+        }
     }
 
     if (-not $commandLines -or $commandLines.Count -eq 0) {
         $via = [string]$Test.verified_via
-        if ($via -match '(?i)runtime|process command line|win32_process') {
+        if ($via -match $context.runtime_verified_via) {
             if ([string]$Test.status -eq 'PASSED') {
                 $result.state = 'COMPLIANT'
                 $result.actual = 'Runtime status from test runner: PASSED'
@@ -702,9 +917,20 @@ function Resolve-ComplianceVerdict {
         [hashtable]$Layer3
     )
 
-    $l1 = $Layer1.state
-    $l2 = $Layer2.state
+    # Access denied is distinct from an absent setting. Normalize it here as a
+    # final guard for every caller of the layer contract.
+    $l1 = if ([bool]$Layer1.access_denied) { 'NOT_ASSESSED' } else { $Layer1.state }
+    $l2 = if ([bool]$Layer2.access_denied) { 'NOT_ASSESSED' } else { $Layer2.state }
     $l3 = if ($Layer3) { $Layer3.state } else { 'NOT_ASSESSED' }
+
+    if ([bool]$Layer1.access_denied -or [bool]$Layer2.access_denied) {
+        return @{
+            verdict         = 'NOT_ASSESSED'
+            deciding_layer  = 'NONE'
+            counts_in_score = $false
+            reasoning       = 'An evidence collector was denied access to an applicable layer. The missing value is unreadable evidence, not an absent configuration, so the control was excluded from scoring.'
+        }
+    }
 
     # Runtime-only controls: when L1/L2 are not applicable, allow L3 to provide
     # the final compliance decision.

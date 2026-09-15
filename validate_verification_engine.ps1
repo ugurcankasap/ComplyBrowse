@@ -20,11 +20,12 @@ param([switch]$Detailed)
 . "$PSScriptRoot\verify_value_based.ps1"
 
 function New-Layer {
-    param([string]$Layer, [string]$State, [bool]$Enforced = $false)
+    param([string]$Layer, [string]$State, [bool]$Enforced = $false, [bool]$AccessDenied = $false)
     return @{
         layer    = $Layer
         source   = "synthetic-$Layer"
         enforced = $Enforced
+        access_denied = $AccessDenied
         state    = $State
         expected = 'synthetic-expected'
         actual   = 'synthetic-actual'
@@ -78,6 +79,12 @@ $truthTable = @(
 
     @{ id = 'TT-15'; browser = 'Firefox'; l1 = 'ABSENT';              l2 = 'NON_COMPLIANT_VALUE'; l3 = 'NOT_ASSESSED';        verdict = 'FAIL';              layer = 'L2';   scored = $true
        why = 'Firefox ambiguity applies only when the user layer is silent, not when it contradicts.' }
+
+     @{ id = 'TT-16'; browser = 'Chrome';  l1 = 'ABSENT';              l2 = 'NOT_APPLICABLE';      l3 = 'NOT_ASSESSED';        l1_access_denied = $true; verdict = 'NOT_ASSESSED'; layer = 'NONE'; scored = $false
+         why = 'An access-denied managed-policy collector result is unreadable evidence, not an absent policy.' }
+
+     @{ id = 'TT-17'; browser = 'Chrome';  l1 = 'ABSENT';              l2 = 'ABSENT';              l3 = 'NOT_ASSESSED';        l2_access_denied = $true; verdict = 'NOT_ASSESSED'; layer = 'NONE'; scored = $false
+         why = 'An access-denied user-preference collector result is unreadable evidence, not an absent user setting.' }
 )
 
 $failures = @()
@@ -90,8 +97,8 @@ Write-Host '-----------------------------------' -ForegroundColor Cyan
 foreach ($case in $truthTable) {
     $decision = Resolve-ComplianceVerdict `
         -Browser $case.browser `
-        -Layer1 (New-Layer -Layer 'L1' -State $case.l1 -Enforced $true) `
-        -Layer2 (New-Layer -Layer 'L2' -State $case.l2) `
+        -Layer1 (New-Layer -Layer 'L1' -State $case.l1 -Enforced $true -AccessDenied ([bool]$case.l1_access_denied)) `
+        -Layer2 (New-Layer -Layer 'L2' -State $case.l2 -AccessDenied ([bool]$case.l2_access_denied)) `
         -Layer3 (New-Layer -Layer 'L3' -State $case.l3)
 
     $problems = @()
@@ -171,12 +178,14 @@ function New-Scenario {
         [string[]]$Agents,
         [bool]$CloudManaged,
         [bool]$PolicyStoreReadable = $true,
-        [bool]$PlatformSupported = $true
+        [bool]$PlatformSupported = $true,
+        [string]$Platform = 'Windows',
+        [bool]$EvidencePending = $false
     )
 
     $mgmt = @{
         hostname            = 'SYNTHETIC'
-        platform            = 'Windows'
+        platform            = $Platform
         platform_supported  = $PlatformSupported
         platform_note       = ''
         elevated            = $true
@@ -203,7 +212,10 @@ function New-Scenario {
         $mgmt.unreadable_channels += @{ channel = 'REGISTRY_ACCESS_DENIED'; service = 'registry'; reason = 'synthetic'; impact = 'synthetic' }
     }
     if (-not $PlatformSupported) {
-        $mgmt.unreadable_channels += @{ channel = 'UNSUPPORTED_PLATFORM'; service = 'macOS'; reason = 'synthetic'; impact = 'synthetic' }
+        $mgmt.unreadable_channels += @{ channel = 'UNSUPPORTED_PLATFORM'; service = $Platform; reason = 'synthetic'; impact = 'synthetic' }
+    }
+    if ($EvidencePending) {
+        $mgmt.unreadable_channels += @{ channel = 'MDM_PROFILE_UNREADABLE'; service = 'macOS Configuration Profiles'; reason = 'synthetic evidence pending'; impact = 'synthetic' }
     }
 
     return @{ name = $Name; mgmt = $mgmt }
@@ -218,7 +230,8 @@ $scenarios = @(
     @{ case = (New-Scenario -Name 'Unmanaged standalone'                 -DomainJoined $false -MdmEnrolled $false -AdmxIngested $false -Agents @()              -CloudManaged $false); expect_channel = 'LOCAL_OR_AGENT';            expect_incomplete = $false }
     @{ case = (New-Scenario -Name 'Cloud-managed browser'                -DomainJoined $false -MdmEnrolled $false -AdmxIngested $false -Agents @()              -CloudManaged $true);  expect_channel = 'LOCAL_OR_AGENT';            expect_incomplete = $true }
     @{ case = (New-Scenario -Name 'Registry not readable'                -DomainJoined $true  -MdmEnrolled $false -AdmxIngested $false -Agents @()              -CloudManaged $false -PolicyStoreReadable $false); expect_channel = 'GPO'; expect_incomplete = $true }
-    @{ case = (New-Scenario -Name 'Unsupported platform'                 -DomainJoined $false -MdmEnrolled $false -AdmxIngested $false -Agents @()              -CloudManaged $false -PlatformSupported $false);    expect_channel = 'LOCAL_OR_AGENT'; expect_incomplete = $true }
+    @{ case = (New-Scenario -Name 'Unsupported Linux platform'            -DomainJoined $false -MdmEnrolled $false -AdmxIngested $false -Agents @()              -CloudManaged $false -PlatformSupported $false -Platform 'Linux'); expect_channel = 'LOCAL_OR_AGENT'; expect_incomplete = $true }
+    @{ case = (New-Scenario -Name 'Supported macOS, evidence pending'     -DomainJoined $false -MdmEnrolled $false -AdmxIngested $false -Agents @()              -CloudManaged $false -PlatformSupported $true -Platform 'macOS' -EvidencePending $true); expect_channel = 'LOCAL_OR_AGENT'; expect_incomplete = $true }
 )
 
 Write-Host ''

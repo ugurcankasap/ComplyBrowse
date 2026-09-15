@@ -1,0 +1,2 @@
+1001 /Applications/Browser.app/Contents/MacOS/browser --disable-web-security --profile-directory=Default
+1002 /Applications/Firefox.app/Contents/MacOS/firefox --safe-mode
